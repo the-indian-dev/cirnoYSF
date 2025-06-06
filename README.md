@@ -48,8 +48,8 @@
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/CirnoYSF.git
-cd CirnoYSF
+git clone https://github.com/theindiandev/cirnoYSF.git
+cd cirnoYSF
 
 # For Linux users
 ./build.sh
