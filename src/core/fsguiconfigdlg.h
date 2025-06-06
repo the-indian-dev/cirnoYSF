@@ -16,7 +16,7 @@ public:
 
 	FsGuiButton *okBtn,*cancelBtn,*resetBtn;
 
-	FsGuiButton *dayOrNightBtn[2];
+	FsGuiButton *dayOrNightBtn[3];
 	FsGuiButton *lightSrcBtn[5];
 
 	FsGuiDropList *airLst,*fldLst,*stpLst;

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcheapgui.a CMakeFiles/cheapgui.dir/gui.cpp.o CMakeFiles/cheapgui.dir/gui_gl2.cpp.o
+/usr/bin/ranlib libcheapgui.a

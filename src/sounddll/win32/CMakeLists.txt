@@ -6,7 +6,14 @@ endif()
 
 set(TARGET_NAME sndYsflight${BITNESS})
 set(IS_LIBRARY_PROJECT 1)
-set(LIB_DEPENDENCY  user32.lib winmm.lib kernel32.lib dsound.lib)
+if(MSVC)
+	set(LIB_DEPENDENCY  user32.lib winmm.lib kernel32.lib dsound.lib)
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC library names
+	set(LIB_DEPENDENCY  user32 winmm kernel32 dsound)
+else()
+	set(LIB_DEPENDENCY  user32.lib winmm.lib kernel32.lib dsound.lib)
+endif()
 set(INCLUDE_DEPENDENCY "")
 set(OWN_HEADER_PATH .)
 set(ADDITIONAL_HEADER_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -128,6 +135,12 @@ elseif(APPLE)
 
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmacosx-version-min=10.9 -Wno-switch")
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC specific flags
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
+	# Enable Windows-specific definitions
+	add_definitions(-DWIN32 -D_WIN32)
 elseif(UNIX)
 	# -Wl,--no-as-needed required for g++ 4.8.4 Confirmed unnecessary with 5.4.0
 	#  http://stackoverflow.com/questions/19463602/compiling-multithread-code-with-g
@@ -259,6 +272,9 @@ foreach(ONE_TARGET ${TARGET_NAME})
 	# We suffered enough from the shared stdc++
 	if(UNIX AND NOT APPLE AND NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 		target_link_libraries(${ONE_TARGET} pthread -static-libstdc++ -static-libgcc)
+	elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+		# MinGW specific linking
+		target_link_libraries(${ONE_TARGET} -static-libgcc -static-libstdc++)
 	endif()
 
 	if(ADDITIONAL_HEADER_PATH)

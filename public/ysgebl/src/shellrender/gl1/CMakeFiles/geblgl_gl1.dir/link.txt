@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgeblgl_gl1.a CMakeFiles/geblgl_gl1.dir/ysshellextgl_gl1.cpp.o
+/usr/bin/ranlib libgeblgl_gl1.a

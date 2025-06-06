@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/yssimplesound_stressTest.dir/link.d CMakeFiles/yssimplesound_stressTest.dir/stress.cpp.o -o yssimplesound_stressTest  ../../../fssimplewindow/src/libfssimplewindow.a ../libyssimplesound.a ../libyssimplesound_linux_alsa.a -lpthread -lGL -lGLU -lX11 /usr/lib/libasound.so

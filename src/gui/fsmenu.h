@@ -50,6 +50,7 @@ public:
 	FsGuiButton *flyNowBtn,*replayRecordBtn,*retryPrevMissionBtn;
 	FsGuiButton *englishBtn,*languageBtn;
 	FsGuiButton *showConsoleBtn;
+	FsGuiButton *installAddonBtn;
 
 	FsGuiButton *votePageBtn;
 

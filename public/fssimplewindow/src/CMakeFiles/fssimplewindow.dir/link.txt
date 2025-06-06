@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfssimplewindow.a CMakeFiles/fssimplewindow.dir/glx/fsglxkeymap.cpp.o CMakeFiles/fssimplewindow.dir/glx/fsglxwrapper.cpp.o CMakeFiles/fssimplewindow.dir/fssimplewindowcommon.cpp.o
+/usr/bin/ranlib libfssimplewindow.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfsguifiledialog.a CMakeFiles/fsguifiledialog.dir/fsguifiledialog_linux.cpp.o CMakeFiles/fsguifiledialog.dir/fsguifiledialog.cpp.o
+/usr/bin/ranlib libfsguifiledialog.a

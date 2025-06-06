@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/yspastebmp.dir/link.d CMakeFiles/yspastebmp.dir/yspastebmp.cpp.o -o yspastebmp  ../../ysclass/src/libysclass.a ../src/libysbitmap.a

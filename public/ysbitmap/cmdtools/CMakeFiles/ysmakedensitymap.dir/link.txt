@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/ysmakedensitymap.dir/link.d CMakeFiles/ysmakedensitymap.dir/ysmakedensitymap.cpp.o -o ysmakedensitymap  ../../ysclass/src/libysclass.a ../src/libysbitmap.a

@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/ysmakealphamask.dir/link.d CMakeFiles/ysmakealphamask.dir/ysmakealphamask.cpp.o -o ysmakealphamask  ../../ysclass/src/libysclass.a ../src/libysbitmap.a

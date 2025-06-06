@@ -10,6 +10,7 @@
 #include "fsdef.h"
 #include "graphics/common/fsopengl.h"
 #include "fscloud.h"
+#include "fsweather.h"
 
 
 
@@ -1100,7 +1101,13 @@ void FsSolidClouds::AddToParticleManager(
 	FSENVIRONMENT env,const class FsWeather &weather,
 	const YsVec3 &viewDir,const YsMatrix4x4 &viewMdlTfm,const double &nearZ,const double &farZ,const double &tanFov)
 {
-	const double baseBrightness=(FSDAYLIGHT==env ? 0.7 : 0.15);
+	double baseBrightness=(FSDAYLIGHT==env ? 0.7 : (FSSUNSET==env ? 0.5 : 0.15));
+	
+	// Make clouds much darker during rain
+	if(weather.GetWeatherType() == FSWEATHER_RAIN)
+	{
+		baseBrightness *= 0.3;  // Much darker clouds during rain
+	}
 
 	YsListItem <FsSolidCloud> *itm=NULL;
 	while((itm=cloudContainer.FindNext(itm))!=NULL)

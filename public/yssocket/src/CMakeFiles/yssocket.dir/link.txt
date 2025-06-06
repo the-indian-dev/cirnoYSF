@@ -1,0 +1,2 @@
+/usr/bin/ar qc libyssocket.a CMakeFiles/yssocket.dir/yssocket.cpp.o
+/usr/bin/ranlib libyssocket.a

@@ -525,3 +525,5 @@ void FsGroundSky::DrawCrappy(const YsVec3 &pos,const YsColor &ignd,const YsColor
 	glDepthMask(GL_TRUE);
 	glStencilOp(GL_KEEP,GL_KEEP,GL_INCR);
 }
+
+

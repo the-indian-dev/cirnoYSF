@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysclass11.a CMakeFiles/ysclass11.dir/ysthread11.cpp.o CMakeFiles/ysclass11.dir/ysthreadpool.cpp.o
+/usr/bin/ranlib libysclass11.a

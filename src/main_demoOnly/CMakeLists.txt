@@ -15,6 +15,10 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
 	set(TARGET_NAME ysflight${BITNESS}_gl2demo)
 elseif(MSVC)
 	set(TARGET_NAME ysflight${BITNESS}_gl2demo ysflight${BITNESS}_gl1demo)
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC compiler - focus on OpenGL
+	set(TARGET_NAME ysflight${BITNESS}_gl1demo ysflight${BITNESS}_gl2demo)
+	message(STATUS "Building YSFlight Demo for MinGW/MSYS2 with OpenGL support")
 elseif(APPLE)
 	set(TARGET_NAME ysflight${BITNESS}_gl1demo ysflight${BITNESS}_gl2demo)
 elseif(ANDROID)
@@ -73,6 +77,10 @@ elseif("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
 	set(EXE_TYPE)
 elseif(MSVC)
 	set(EXE_TYPE)
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 - create console application by default
+	set(EXE_TYPE)
+	set(WIN_SUBSYSTEM CONSOLE)
 else()
 	set(EXE_TYPE)
 endif()
@@ -164,6 +172,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
 	# 2016/07/22
 	#  /MT flags should be set outside the public repository.  It is moved to the higher-level CMakeLists.txt
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC specific flags
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static-libgcc -static-libstdc++")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static-libgcc")
+	# Enable Windows-specific definitions
+	add_definitions(-DWIN32 -D_WIN32)
 elseif(APPLE)
 	# 2015/07/15
 	#   Sorry.  I pulled the plug.  All of my programs, including YS FLIGHT SIMULATOR, won't support 
@@ -244,6 +258,29 @@ elseif(APPLE)
 	)
 	set(platform_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../platform/macosx/APPL.icns)
 	set_source_files_properties(../platform/macosx/APPL.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+	set(platform_HEADERS "")
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC compiler
+	set(OS_LIBRARIES 
+		kernel32 
+		user32 
+		gdi32 
+		winspool 
+		comdlg32 
+		advapi32 
+		shell32 
+		ole32 
+		oleaut32 
+		uuid 
+		odbc32 
+		odbccp32
+		wsock32
+		ws2_32
+		winmm
+		opengl32
+		glu32
+	)
+	set(platform_SRCS "")
 	set(platform_HEADERS "")
 elseif(UNIX)
 	set(OS_LIBRARIES 
@@ -384,6 +421,9 @@ foreach(ONE_TARGET ${TARGET_NAME})
 	# We suffered enough from the shared stdc++
 	if(UNIX AND NOT APPLE AND NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "Android")
 		target_link_libraries(${ONE_TARGET} pthread -static-libstdc++ -static-libgcc)
+	elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+		# MinGW specific linking
+		target_link_libraries(${ONE_TARGET} -static-libgcc -static-libstdc++)
 	endif()
 
 	if(ADDITIONAL_HEADER_PATH)
@@ -494,6 +534,40 @@ if(MSVC)
 		fsguilib_gl2 
 		ysflight_platform_win32 
 		ysflight_platform_win32_gl 
+		ysflight_graphics_gl2
+		ysscenery_dnm_gl2
+		ystexturemanager_gl
+		geblgl_gl2
+		ysglcpp
+		ysglcpp_gl2
+		fslazywindow
+		${OS_LIBRARIES}
+	)
+
+	set(DLL_PROJS sndYsflight${BITNESS} voiceYsflight${BITNESS})
+	set(NEED_DLL_TARGETS ysflight${BITNESS}_gl1demo ysflight${BITNESS}_gl2demo)
+elseif(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	# MinGW/MSYS2 GCC compiler
+	target_link_libraries(ysflight${BITNESS}_gl1demo 
+		ysgl
+		yssystemfont
+		fsguilib_gl1
+		ysflight_platform_mingw 
+		ysflight_platform_mingw_gl 
+		ysflight_graphics_gl1 
+		ysscenery_dnm_gl1
+		ystexturemanager_gl
+		geblgl_gl1
+		ysglcpp_gl1
+		fslazywindow
+		${OS_LIBRARIES}
+	)
+	target_link_libraries(ysflight${BITNESS}_gl2demo 
+		ysgl
+		yssystemfont
+		fsguilib_gl2 
+		ysflight_platform_mingw 
+		ysflight_platform_mingw_gl 
 		ysflight_graphics_gl2
 		ysscenery_dnm_gl2
 		ystexturemanager_gl

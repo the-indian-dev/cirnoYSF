@@ -1,0 +1,2 @@
+/usr/bin/ar qc libystexturemanager_gl.a CMakeFiles/ystexturemanager_gl.dir/ystexturemanager_gl.cpp.o
+/usr/bin/ranlib libystexturemanager_gl.a

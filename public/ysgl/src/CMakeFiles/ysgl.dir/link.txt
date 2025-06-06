@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysgl.a CMakeFiles/ysgl.dir/ysglbitmap.c.o CMakeFiles/ysgl.dir/ysglmath.c.o CMakeFiles/ysgl.dir/ysglsl3ddrawing.c.o CMakeFiles/ysgl.dir/ysglslbitmaprenderer.c.o CMakeFiles/ysgl.dir/ysglslplain2ddrawing.c.o CMakeFiles/ysgl.dir/ysglslsharedrenderer.c.o CMakeFiles/ysgl.dir/ysglslutil.c.o CMakeFiles/ysgl.dir/ysglslprogram.c.o
+/usr/bin/ranlib libysgl.a

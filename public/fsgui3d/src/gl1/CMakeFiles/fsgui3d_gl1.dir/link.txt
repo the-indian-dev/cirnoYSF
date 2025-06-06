@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfsgui3d_gl1.a CMakeFiles/fsgui3d_gl1.dir/fsgui3dgl1.x.cpp.o
+/usr/bin/ranlib libfsgui3d_gl1.a

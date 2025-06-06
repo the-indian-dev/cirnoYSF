@@ -251,7 +251,8 @@ typedef enum
 enum FSENVIRONMENT
 {
 	FSDAYLIGHT,
-	FSNIGHT
+	FSNIGHT,
+	FSSUNSET
 };
 
 const int FsMaxNumSubWindow=2;
@@ -511,6 +512,12 @@ enum
 {
 	FSCLOUDLAYER_NONE,
 	FSCLOUDLAYER_OVERCAST
+};
+
+enum FSWEATHERTYPE
+{
+	FSWEATHER_CLEAR,
+	FSWEATHER_RAIN
 };
 
 // Weather <<

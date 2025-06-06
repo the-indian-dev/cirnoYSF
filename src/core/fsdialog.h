@@ -14,6 +14,7 @@ public:
 
 	double windDir,windSpd;
 	FSENVIRONMENT dayOrNight;
+	FSWEATHERTYPE weatherType;
 	YSBOOL fog;
 	double fogVisibility;
 

@@ -22,8 +22,34 @@
 #include "fsnetconfig.h"
 
 #include "graphics/common/fsconsole.h"
+#include "fsworld.h"
+#include "gui/fsguimaincanvas.h"
+#include "fssimpleprogressdisplay.h"
 
 #include "fs.h"
+
+// Progress callback functions
+static void ProgressCallbackFunction(int current, int total, const wchar_t *description)
+{
+	printf("DEBUG: Progress callback called: %d/%d\n", current, total);
+	fsSimpleProgress.SetProgress(current, total, description);
+	fsSimpleProgress.Draw();
+}
+
+static void FileProgressCallbackFunction(const wchar_t *filename)
+{
+	printf("DEBUG: File progress callback: %ls\n", filename);
+	fsSimpleProgress.SetCurrentFile(filename);
+	fsSimpleProgress.Draw();
+	FsSleep(100); // Small delay to make file loading visible
+}
+
+static void ErrorCallbackFunction(const wchar_t *filename)
+{
+	printf("DEBUG: Error callback: %ls\n", filename);
+	fsSimpleProgress.AddFailedFile(filename);
+}
+
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
 #include "fsmenu.h"
@@ -340,7 +366,7 @@ void FsLazyWindowApplication::SaveWindowPositionAndSizeIfNecessary(void)
 	opt.Load(FsGetOptionFile());
 
 	auto &fscp=runLoopPtr->GetCommandParameter();
-	if(opt.scrnMode==0 && 
+	if(opt.scrnMode==0 &&
 	   opt.rememberWindowSize==YSTRUE &&
 	   fscp.prepareRelease!=YSTRUE)
 	{
@@ -357,7 +383,7 @@ YSBOOL FsLazyWindowApplication::StepByStepInitialization(void)
 		return YSTRUE;
 	case 0:
 		{
-			fsConsole.Printf("**** STARTING YS FLIGHT SIMULATOR ****\n");
+			fsConsole.Printf("**** STARTING cirnoYSF SIMULATOR ****\n");
 		}
 		break;
 	case 1:
@@ -369,9 +395,58 @@ YSBOOL FsLazyWindowApplication::StepByStepInitialization(void)
 		}
 		break;
 	case 2:
-		if(YSTRUE!=runLoopPtr->InitializeOneStep(FsWorld::InitializationOption()))
 		{
-			return YSFALSE; // Don't increment the counter until getting YSTRUE.
+			static YSBOOL progressShown = YSFALSE;
+
+			if(YSFALSE == progressShown)
+			{
+				printf("DEBUG: Showing progress display\n");
+				fsSimpleProgress.Show(L"Loading Assets");
+				fsWorldProgressCallback = ProgressCallbackFunction;
+				fsWorldFileProgressCallback = FileProgressCallbackFunction;
+				fsWorldErrorCallback = ErrorCallbackFunction;
+				progressShown = YSTRUE;
+			}
+
+			if(YSTRUE!=runLoopPtr->InitializeOneStep(FsWorld::InitializationOption()))
+			{
+				return YSFALSE; // Don't increment the counter until getting YSTRUE.
+			}
+			else
+			{
+				printf("DEBUG: Hiding progress display\n");
+
+				// Show failed files using message box if any
+				if(fsSimpleProgress.failedFiles.GetN() > 0)
+				{
+					YsWString message;
+					message.Set(L"The following asset files failed to load:\n\n");
+
+					for (YSSIZE_T i = 0; i < fsSimpleProgress.failedFiles.GetN() && i < 15; i++)
+					{
+						message.Append(fsSimpleProgress.failedFiles[i]);
+						message.Append(L"\n");
+					}
+
+					if (fsSimpleProgress.failedFiles.GetN() > 15)
+					{
+						YsString moreStr;
+						moreStr.Printf("\n... and %d more files", (int)(fsSimpleProgress.failedFiles.GetN() - 15));
+
+						YsWString moreText;
+						moreText.SetUTF8String(moreStr);
+						message.Append(moreText);
+					}
+
+					mainCanvasPtr->StartMessageBox(L"Asset Loading Errors", message, L"OK", nullptr, 0, 0);
+				}
+
+				fsSimpleProgress.Hide();
+				fsWorldProgressCallback = nullptr;
+				fsWorldFileProgressCallback = nullptr;
+				fsWorldErrorCallback = nullptr;
+				progressShown = YSFALSE;
+			}
 		}
 		break;
 	case 3:
@@ -920,36 +995,36 @@ static FsLazyWindowApplication *appPtr=nullptr;
 // void FsConcordeFlybyDemonstration(int concordeFlybyType)
 // {
 // 	YSBOOL terminateByUser;
-// 
-// 
+//
+//
 // 	world->TerminateSimulation();
 // 	world->PrepareSimulation();
-// 
-// 
+//
+//
 // 	world->AddField(NULL,"HEATHROW",YsVec3(0.0,0.0,0.0),YsAtt3(0.0,0.0,0.0),YSTRUE,YSFALSE);
 // 	world->DisableGroundFire();
-// 
-// 
+//
+//
 // 	double bankLimitOverride;
 // 	bankLimitOverride=YsPi/2.0;
 // 	// if(formationLanding==YSTRUE)
 // 	{
 // 		bankLimitOverride=YsPi/6.0;
 // 	}
-// 
-// 
+//
+//
 // 	FsDemoModeInfo info(FSDEMO_CONCORDEFLYBY);
 // 	if(world->PrepareConcordeFlyby(info,concordeFlybyType)==YSOK)
 // 	{
-// 
+//
 // 		world->RunDemoMode(info,terminateByUser,"Press key to exit demonstration.",0.0,YSTRUE,YSTRUE);
-// 
+//
 // 		world->PrepareReplaySimulation();        // To check flight record
-// 
+//
 // //		world->TerminateSimulation();            // To clean up memory
 // //		world->UnprepareAllTemplate();           // To clean up memory
 // //		YsShell::CleanUpVertexPolygonStore();    // To clean up memory
-// 
+//
 // 	}
 // 	else
 // 	{
@@ -964,7 +1039,7 @@ static FsLazyWindowApplication *appPtr=nullptr;
 // 	// YsShell::vertexStore.SelfDiagnostic();
 // 	// printf("ShellPolygonStore\n");
 // 	// YsShell::polygonStore.SelfDiagnostic();
-// 
+//
 // 	int i;
 // 	world->TerminateSimulation();
 // 	for(i=0; i<100; i++)
@@ -975,7 +1050,7 @@ static FsLazyWindowApplication *appPtr=nullptr;
 // 		world->AddField(NULL,"HAWAII",YsVec3(0.0,0.0,0.0),YsAtt3(0.0,0.0,0.0),YSTRUE);
 // 		printf("-----------------END ADDFIELD\n");
 // 		world->TerminateSimulation();
-// 
+//
 // 		// printf("ShellVertexStore\n");
 // 		// YsShell::vertexStore.SelfDiagnostic();
 // 		// printf("ShellPolygonStore\n");
@@ -1018,4 +1093,3 @@ void FsHelpControlJapanese(void)
 	YsOpenURL("document/controlj.html");
 #endif
 }
-

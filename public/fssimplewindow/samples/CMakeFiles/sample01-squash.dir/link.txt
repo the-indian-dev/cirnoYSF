@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/sample01-squash.dir/link.d "CMakeFiles/sample01-squash.dir/sample01-squash/sample01-squash.cpp.o" -o sample01-squash  ../src/libfssimplewindow.a ../../ysbitmapfont/src/libysbitmapfont.a -lGL -lGLU -lX11 ../../ysgl/src/libysgl.a -lpthread -static-libstdc++ -static-libgcc

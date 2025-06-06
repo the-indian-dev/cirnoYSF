@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--no-as-needed -Wl,--dependency-file=CMakeFiles/ysgl_preproc.dir/link.d CMakeFiles/ysgl_preproc.dir/glsl_src/preproc.cpp.o -o ../../../exe/ysgl_preproc  ../../ysclass/src/libysclass.a

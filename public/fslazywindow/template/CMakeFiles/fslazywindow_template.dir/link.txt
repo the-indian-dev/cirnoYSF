@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--no-as-needed -Wl,--dependency-file=CMakeFiles/fslazywindow_template.dir/link.d CMakeFiles/fslazywindow_template.dir/main.cpp.o -o fslazywindow_template  ../src/libfslazywindow.a -lpthread -static-libstdc++ -static-libgcc ../../fssimplewindow/src/libfssimplewindow.a -lGL -lGLU -lX11

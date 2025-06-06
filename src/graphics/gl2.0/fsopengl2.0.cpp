@@ -426,6 +426,22 @@ void FsSetDirectionalLight(const YsVec3 &/*cameraPosition*/ ,const YsVec3 &light
 		spc[2]=0.0F;
 		spc[3]=1.0F;
 		break;
+	case FSSUNSET:
+		dif[0]=0.7F;
+		dif[1]=0.6F;
+		dif[2]=0.5F;
+		dif[3]=1.0F;
+
+		amb[0]=0.35F;
+		amb[1]=0.3F;
+		amb[2]=0.25F;
+		amb[3]=1.0F;
+
+		spc[0]=0.8F;
+		spc[1]=0.7F;
+		spc[2]=0.6F;
+		spc[3]=1.0F;
+		break;
 	}
 
 	YsGLSLSetShared3DRendererDirectionalLightfv(0,light);
@@ -443,6 +459,10 @@ void FsSetDirectionalLight(const YsVec3 &/*cameraPosition*/ ,const YsVec3 &light
 	case FSNIGHT:
 		YsGLSLSet3DRendererUniformFlashSize(YsGLSLSharedFlash3DRenderer(),1.0f);
 		YsGLSLSet3DRendererFlashRadius(YsGLSLSharedFlash3DRenderer(),0.2f,1.0f);
+		break;
+	case FSSUNSET:
+		YsGLSLSet3DRendererUniformFlashSize(YsGLSLSharedFlash3DRenderer(),0.2f);
+		YsGLSLSet3DRendererFlashRadius(YsGLSLSharedFlash3DRenderer(),0.5f,1.0f);
 		break;
 	}
 	YsGLSLEndUse3DRenderer(YsGLSLSharedFlash3DRenderer());
@@ -471,7 +491,7 @@ void FsFogOn(const YsColor &col,const double &visibility)
 	// f  0:Completely fogged out   1:Clear
 	// f=e^(-d*d)
 	// d  0:Clear      Infinity: Completely fogged out
-	// 99% fogged out means:  e^(-d*d)=0.01  WhatÅfs d?
+	// 99% fogged out means:  e^(-d*d)=0.01  What\81fs d?
 	// -d*d=loge(0.01)
 	// -d*d= -4.60517
 	// d=2.146

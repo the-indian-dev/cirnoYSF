@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysfontrenderer.a CMakeFiles/ysfontrenderer.dir/ysfixedfontrenderer.cpp.o CMakeFiles/ysfontrenderer.dir/ysfontrenderer.cpp.o CMakeFiles/ysfontrenderer.dir/yssystemfontrenderer.cpp.o
+/usr/bin/ranlib libysfontrenderer.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfsguilib_nownd.a CMakeFiles/fsguilib_nownd.dir/fsguinownd.cpp.o
+/usr/bin/ranlib libfsguilib_nownd.a

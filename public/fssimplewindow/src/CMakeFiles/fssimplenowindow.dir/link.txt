@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfssimplenowindow.a CMakeFiles/fssimplenowindow.dir/fssimplewindowcommon.cpp.o CMakeFiles/fssimplenowindow.dir/nownd/fssimplenowindow.cpp.o
+/usr/bin/ranlib libfssimplenowindow.a

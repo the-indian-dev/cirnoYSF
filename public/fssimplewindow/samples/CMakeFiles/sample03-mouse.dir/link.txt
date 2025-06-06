@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/sample03-mouse.dir/link.d "CMakeFiles/sample03-mouse.dir/sample03-mouse/sample03-mouse.cpp.o" -o sample03-mouse  ../src/libfssimplewindow.a ../../ysbitmapfont/src/libysbitmapfont.a -lGL -lGLU -lX11 ../../ysgl/src/libysgl.a -lpthread -static-libstdc++ -static-libgcc

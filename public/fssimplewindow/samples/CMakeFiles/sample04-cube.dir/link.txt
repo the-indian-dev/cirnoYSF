@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/sample04-cube.dir/link.d "CMakeFiles/sample04-cube.dir/sample04-cube/sample04-cube.cpp.o" -o sample04-cube  ../src/libfssimplewindow.a ../../ysbitmapfont/src/libysbitmapfont.a -lGL -lGLU -lX11 ../../ysgl/src/libysgl.a -lpthread -static-libstdc++ -static-libgcc

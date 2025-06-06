@@ -1207,6 +1207,9 @@ void FsSimulationEvent::Save(FILE *fp,const class FsSimulation *sim) const
 		case FSNIGHT:
 			fprintf(fp,"ENV NIGHT\n");
 			break;
+		case FSSUNSET:
+			fprintf(fp,"ENV SUNSET\n");
+			break;
 		}
 		fprintf(fp,"ENDEVT\n");
 		break;
@@ -1791,6 +1794,7 @@ void FsNewFlightEnvironmentInfo::Initialize(void)
 	windDir=0.0;
 	windSpd=0.0;
 	dayOrNight=FSDAYLIGHT;
+	weatherType=FSWEATHER_CLEAR;
 	fog=YSTRUE;
 	fogVisibility=20000.0;
 	cloudLayer.Clear();

@@ -268,9 +268,9 @@ void FsSetPointLight(const YsVec3 &cameraPosition,const YsVec3 &lightPosition,FS
 		amb[2]=0.3F;
 		amb[3]=1.0F;
 
-		spc[0]=0.9F;
-		spc[1]=0.9F;
-		spc[2]=0.9F;
+		spc[0]=1.0F;
+		spc[1]=1.0F;
+		spc[2]=1.0F;
 		spc[3]=1.0F;
 		break;
 	case FSNIGHT:
@@ -279,17 +279,35 @@ void FsSetPointLight(const YsVec3 &cameraPosition,const YsVec3 &lightPosition,FS
 		dif[2]=0.05F;
 		dif[3]=1.0F;
 
-		amb[0]=0.05F;
-		amb[1]=0.05F;
-		amb[2]=0.05F;
+		amb[0]=0.02F;
+		amb[1]=0.02F;
+		amb[2]=0.02F;
 		amb[3]=1.0F;
 
-		spc[0]=0.0F;
-		spc[1]=0.0F;
-		spc[2]=0.0F;
+		spc[0]=0.2F;
+		spc[1]=0.2F;
+		spc[2]=0.2F;
+		spc[3]=1.0F;
+		break;
+	case FSSUNSET:
+		dif[0]=0.7F;
+		dif[1]=0.6F;
+		dif[2]=0.5F;
+		dif[3]=1.0F;
+
+		amb[0]=0.35F;
+		amb[1]=0.3F;
+		amb[2]=0.25F;
+		amb[3]=1.0F;
+
+		spc[0]=0.8F;
+		spc[1]=0.7F;
+		spc[2]=0.6F;
 		spc[3]=1.0F;
 		break;
 	}
+
+
 
 	glLightfv(GL_LIGHT0,GL_DIFFUSE,dif);
 	glLightfv(GL_LIGHT0,GL_AMBIENT,amb);
@@ -333,9 +351,9 @@ void FsSetDirectionalLight(const YsVec3 &cameraPosition,const YsVec3 &lightDirec
 		amb[2]=0.3F;
 		amb[3]=1.0F;
 
-		spc[0]=0.9F;
-		spc[1]=0.9F;
-		spc[2]=0.9F;
+		spc[0]=1.0F;
+		spc[1]=1.0F;
+		spc[2]=1.0F;
 		spc[3]=1.0F;
 		break;
 	case FSNIGHT:
@@ -344,14 +362,30 @@ void FsSetDirectionalLight(const YsVec3 &cameraPosition,const YsVec3 &lightDirec
 		dif[2]=0.05F;
 		dif[3]=1.0F;
 
-		amb[0]=0.05F;
-		amb[1]=0.05F;
-		amb[2]=0.05F;
+		amb[0]=0.02F;
+		amb[1]=0.02F;
+		amb[2]=0.02F;
 		amb[3]=1.0F;
 
-		spc[0]=0.0F;
-		spc[1]=0.0F;
-		spc[2]=0.0F;
+		spc[0]=0.2F;
+		spc[1]=0.2F;
+		spc[2]=0.2F;
+		spc[3]=1.0F;
+		break;
+	case FSSUNSET:
+		dif[0]=0.7F;
+		dif[1]=0.6F;
+		dif[2]=0.5F;
+		dif[3]=1.0F;
+
+		amb[0]=0.35F;
+		amb[1]=0.3F;
+		amb[2]=0.25F;
+		amb[3]=1.0F;
+
+		spc[0]=0.8F;
+		spc[1]=0.7F;
+		spc[2]=0.6F;
 		spc[3]=1.0F;
 		break;
 	}

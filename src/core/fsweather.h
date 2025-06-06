@@ -25,11 +25,19 @@ protected:
 	YsVec3 wind;
 	YSBOOL fog;
 	double fogVisibility;
+	FSWEATHERTYPE weatherType;
 
 	YsVec3 transWind;
 	double transFogVisibility;
 
 	YsArray <FsWeatherCloudLayer> cloudLayer;
+	
+	// Rain-related properties
+	YSBOOL isRaining;
+	double rainIntensity;
+	double thunderTimer;
+	YsVec3 skyColor;
+	YsVec3 fogColor;
 
 public:
 	FsWeather();
@@ -48,6 +56,16 @@ public:
 	void SetFog(YSBOOL f);
 	void SetTransFog(YSBOOL f);
 	YSBOOL GetFog(void) const;
+
+	void SetWeatherType(FSWEATHERTYPE type);
+	FSWEATHERTYPE GetWeatherType(void) const;
+	YSBOOL IsRaining(void) const;
+	double GetRainIntensity(void) const;
+	const YsVec3 &GetSkyColor(void) const;
+	const YsVec3 &GetFogColor(void) const;
+	void UpdateRain(const double &dt);
+	void DrawRain(const YsVec3 &cameraPos, const YsVec3 &cameraDir) const;
+	void DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const;
 
 	void SetCloudLayer(YSSIZE_T nLayer,const FsWeatherCloudLayer layer[]);
 	void AddCloudLayer(const FsWeatherCloudLayer &layer);

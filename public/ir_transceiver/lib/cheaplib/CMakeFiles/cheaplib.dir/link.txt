@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcheaplib.a CMakeFiles/cheaplib.dir/cheaputil.cpp.o
+/usr/bin/ranlib libcheaplib.a

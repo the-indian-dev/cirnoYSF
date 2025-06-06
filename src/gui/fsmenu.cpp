@@ -322,6 +322,8 @@ void FsGuiMainDialog::Make(void)
 
 	showConsoleBtn=AddTextButton(0,FSKEY_NULL,FSGUI_CHECKBOX,FSGUI_MAINDLG_SHOWCONSOLE,YSTRUE);
 
+	installAddonBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,FSGUI_MAINDLG_INSTALLADDON,YSTRUE);
+
 	if(FsGetDate()<=20100315)
 	{
 		AddStaticText(0,FSKEY_NULL,FSGUI_VOTEYSFLIGHTDLG_MESSAGE,YSTRUE);
@@ -373,6 +375,10 @@ void FsGuiMainDialog::OnButtonClick(FsGuiButton *btn)
 	else if(btn==votePageBtn)
 	{
 	    YsOpenURL("http://www.vector.co.jp/award/vote.html?no=se121250&vasts=vote");
+	}
+	else if(btn==installAddonBtn)
+	{
+		canvas->InstallAddon();
 	}
 
 

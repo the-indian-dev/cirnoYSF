@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/test_fullscreen.dir/link.d CMakeFiles/test_fullscreen.dir/fullscreen.cpp.o -o test_fullscreen  ../libfssimplewindow.a -lGL -lGLU -lX11

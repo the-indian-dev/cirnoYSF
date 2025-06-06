@@ -108,12 +108,14 @@ void FsGuiConfigDialog::MakeDefaultsDialog(FsWorld *world,FsFlightConfig &cfg)
 
 	dayOrNightBtn[0]=AddTextButton(MkId("day")  ,FSKEY_NULL,FSGUI_RADIOBUTTON,L"DAY",YSTRUE);
 	dayOrNightBtn[1]=AddTextButton(MkId("night"),FSKEY_NULL,FSGUI_RADIOBUTTON,L"NIGHT",YSFALSE);
-	SetRadioButtonGroup(2,dayOrNightBtn);
+	dayOrNightBtn[2]=AddTextButton(MkId("sunset"),FSKEY_NULL,FSGUI_RADIOBUTTON,L"SUNSET",YSFALSE);
+	SetRadioButtonGroup(3,dayOrNightBtn);
 
 	grpBox=AddGroupBox();
 	grpBox->AddGuiItem(label);
 	grpBox->AddGuiItem(dayOrNightBtn[0]);
 	grpBox->AddGuiItem(dayOrNightBtn[1]);
+	grpBox->AddGuiItem(dayOrNightBtn[2]);
 
 
 
@@ -432,10 +434,17 @@ void FsGuiConfigDialog::InitializeDialog(FsWorld *,FsFlightConfig &cfg)
 	case FSDAYLIGHT:
 		dayOrNightBtn[0]->SetCheck(YSTRUE);
 		dayOrNightBtn[1]->SetCheck(YSFALSE);
+		dayOrNightBtn[2]->SetCheck(YSFALSE);
 		break;
 	case FSNIGHT:
 		dayOrNightBtn[0]->SetCheck(YSFALSE);
 		dayOrNightBtn[1]->SetCheck(YSTRUE);
+		dayOrNightBtn[2]->SetCheck(YSFALSE);
+		break;
+	case FSSUNSET:
+		dayOrNightBtn[0]->SetCheck(YSFALSE);
+		dayOrNightBtn[1]->SetCheck(YSFALSE);
+		dayOrNightBtn[2]->SetCheck(YSTRUE);
 		break;
 	}
 
@@ -580,9 +589,13 @@ void FsGuiConfigDialog::RetrieveConfig(FsFlightConfig &cfg)
 	{
 		cfg.env=FSDAYLIGHT;
 	}
-	else
+	else if(YSTRUE==dayOrNightBtn[1]->GetCheck())
 	{
 		cfg.env=FSNIGHT;
+	}
+	else if(YSTRUE==dayOrNightBtn[2]->GetCheck())
+	{
+		cfg.env=FSSUNSET;
 	}
 
 

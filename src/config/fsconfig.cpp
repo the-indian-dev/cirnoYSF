@@ -380,6 +380,10 @@ YSRESULT FsFlightConfig::SendCommand(const char cmd[])
 				{
 					env=FSNIGHT;
 				}
+				else if(strcmp(av[1],"SUNSET")==0)
+				{
+					env=FSSUNSET;
+				}
 				return YSOK;
 
 			case 27: //	"COARSEWPN",
@@ -629,6 +633,9 @@ YSRESULT FsFlightConfig::Save(const wchar_t fn[])
 			break;
 		case FSNIGHT:
 			fprintf(fp,"ENVIRONME NIGHT\n");
+			break;
+		case FSSUNSET:
+			fprintf(fp,"ENVIRONME SUNSET\n");
 			break;
 		}
 

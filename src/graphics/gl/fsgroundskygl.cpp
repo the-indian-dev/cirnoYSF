@@ -453,6 +453,8 @@ void FsGroundSky::DrawGroundMesh(const YsVec3 &pos,const YsAtt3 &att,const YsCol
 	glPopAttrib();
 }
 
+
+
 void FsGroundSky::DrawCrappy(const YsVec3 &pos,const YsColor &ignd,const YsColor &isky,const double &farZ,YSBOOL)
 {
 	int i,j;

@@ -1,0 +1,10 @@
+#if(WIN32)
+	set(TARGET_NAME irsensor_gui irsend)
+
+	add_subdirectory(gui)
+	add_subdirectory(cui_transmitter)
+	add_subdirectory(lib/cheapgui)
+	add_subdirectory(lib/cheaplib)
+	add_subdirectory(lib/irtoy)
+	add_subdirectory(lib/yscomport)
+#endif()

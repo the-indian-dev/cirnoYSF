@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/ysmakewhitetransparent.dir/link.d CMakeFiles/ysmakewhitetransparent.dir/ysmakewhitetransparent.cpp.o -o ysmakewhitetransparent  ../../ysclass/src/libysclass.a ../src/libysbitmap.a

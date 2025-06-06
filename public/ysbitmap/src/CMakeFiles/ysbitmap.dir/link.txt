@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysbitmap.a CMakeFiles/ysbitmap.dir/ysbitmap.cpp.o CMakeFiles/ysbitmap.dir/ysbitmaparray.cpp.o CMakeFiles/ysbitmap.dir/ysbitmappngif.cpp.o CMakeFiles/ysbitmap.dir/yspng.cpp.o CMakeFiles/ysbitmap.dir/yspngenc.cpp.o
+/usr/bin/ranlib libysbitmap.a

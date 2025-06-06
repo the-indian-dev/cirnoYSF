@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfsgui3d.a CMakeFiles/fsgui3d.dir/fsgui3d.cpp.o CMakeFiles/fsgui3d.dir/fsgui3dicon.cpp.o CMakeFiles/fsgui3d.dir/fsgui3dutil.cpp.o CMakeFiles/fsgui3d.dir/fsgui3dviewcontrol.cpp.o CMakeFiles/fsgui3d.dir/fsgui3dviewcontroldialog.cpp.o
+/usr/bin/ranlib libfsgui3d.a

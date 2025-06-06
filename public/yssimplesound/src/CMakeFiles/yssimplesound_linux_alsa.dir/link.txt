@@ -1,0 +1,2 @@
+/usr/bin/ar qc libyssimplesound_linux_alsa.a CMakeFiles/yssimplesound_linux_alsa.dir/empty.cpp.o
+/usr/bin/ranlib libyssimplesound_linux_alsa.a

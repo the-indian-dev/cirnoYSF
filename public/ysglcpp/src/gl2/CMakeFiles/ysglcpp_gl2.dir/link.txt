@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysglcpp_gl2.a CMakeFiles/ysglcpp_gl2.dir/ysglbuffermanager_gl2.cpp.o CMakeFiles/ysglcpp_gl2.dir/ysglslcpp.cpp.o
+/usr/bin/ranlib libysglcpp_gl2.a

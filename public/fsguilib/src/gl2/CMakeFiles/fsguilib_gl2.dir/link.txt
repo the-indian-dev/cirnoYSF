@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfsguilib_gl2.a CMakeFiles/fsguilib_gl2.dir/fsguigl2.0.cpp.o
+/usr/bin/ranlib libfsguilib_gl2.a

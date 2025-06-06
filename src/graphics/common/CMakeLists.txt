@@ -13,6 +13,7 @@ fsconsole.cpp
 fsopengl.cpp
 fstexturemanager.cpp
 fswirefont_makebuf.cpp
+fsculling.cpp
 )
 
 set(HEADERS
@@ -23,6 +24,7 @@ fsblackout.h
 fsfontrenderer.h
 fsconsole.h
 fstexturemanager.h
+fsculling.h
 )
 
 add_library(${TARGET_NAME} ${SRCS} ${HEADERS})

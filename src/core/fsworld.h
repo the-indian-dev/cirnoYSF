@@ -7,6 +7,15 @@
 #include "fsgroundproperty.h"
 #include "fssimulation.h"
 
+// Global progress callback for asset loading
+typedef void (*FsWorldProgressCallback)(int current, int total, const wchar_t *description);
+typedef void (*FsWorldFileProgressCallback)(const wchar_t *filename);
+typedef void (*FsWorldErrorCallback)(const wchar_t *filename);
+
+extern FsWorldProgressCallback fsWorldProgressCallback;
+extern FsWorldFileProgressCallback fsWorldFileProgressCallback;
+extern FsWorldErrorCallback fsWorldErrorCallback;
+
 // Declaration /////////////////////////////////////////////
 class FsAirplaneTemplate
 {

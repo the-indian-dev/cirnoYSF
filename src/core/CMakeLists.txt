@@ -14,6 +14,8 @@ add_library(${TARGET_NAME}
 	fsguiconfigdlg.cpp
 	fsguiinfltdlg.cpp
 	fsguinewflightdialog.cpp
+	fsguiprogressdialog.cpp
+	fssimpleprogressdisplay.cpp
 	fsguiselectiondialogbase.cpp
 	fshud.cpp
 	fshud2.cpp
@@ -56,6 +58,8 @@ add_library(${TARGET_NAME}
 	fsgroundsky.h
 	fsguiconfigdlg.h
 	fsguiinfltdlg.h
+	fsguiprogressdialog.h
+	fssimpleprogressdisplay.h
 	fsguiselectiondialogbase.h
 	fshud.h
 	fshud2.h

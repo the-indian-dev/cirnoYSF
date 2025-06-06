@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/irsend.dir/link.d CMakeFiles/irsend.dir/main.cpp.o CMakeFiles/irsend.dir/__/__/src/ir_transceiver/gui/irdata.cpp.o -o irsend  ../lib/cheaplib/libcheaplib.a ../lib/yscomport/libcomportlib.a ../lib/irtoy/libirtoylib.a ../lib/cheaplib/libcheaplib.a ../lib/yscomport/libcomportlib.a -lpthread

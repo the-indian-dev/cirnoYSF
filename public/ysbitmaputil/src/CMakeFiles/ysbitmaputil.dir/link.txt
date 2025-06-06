@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysbitmaputil.a CMakeFiles/ysbitmaputil.dir/ysbitmapdrawing.cpp.o CMakeFiles/ysbitmaputil.dir/ysbitmapcontour.cpp.o
+/usr/bin/ranlib libysbitmaputil.a

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgeblgl_nownd.a CMakeFiles/geblgl_nownd.dir/ysshellextgl_nownd.cpp.o
+/usr/bin/ranlib libgeblgl_nownd.a

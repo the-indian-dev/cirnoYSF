@@ -497,6 +497,14 @@ void FsGuiMainCanvas::Sim_CreateFlight_Create(FsNewFlightDialogInfo &info)
 		world->SetFog(info.envInfo.fog);
 		world->SetFogVisibility(info.envInfo.fogVisibility);
 
+		// Set weather type for rain effects
+		auto sim = world->GetSimulation();
+		if(sim != nullptr)
+		{
+			auto &weather = sim->GetWeather();
+			weather.SetWeatherType(info.envInfo.weatherType);
+		}
+
 		for(int i=0; i<=info.envInfo.cloudLayer.GetN()-2; i+=2)
 		{
 			world->AddOvercastLayer(info.envInfo.cloudLayer[i],info.envInfo.cloudLayer[i+1]);
@@ -1573,6 +1581,14 @@ void FsGuiMainCanvas::Sim_RacingMode_Create(FsNewFlightDialogInfo &info)
 
 		world->SetFog(info.envInfo.fog);
 		world->SetFogVisibility(info.envInfo.fogVisibility);
+
+		// Set weather type for rain effects
+		auto sim = world->GetSimulation();
+		if(sim != nullptr)
+		{
+			auto &weather = sim->GetWeather();
+			weather.SetWeatherType(info.envInfo.weatherType);
+		}
 
 		for(int i=0; i<=info.envInfo.cloudLayer.GetN()-2; i+=2)
 		{

@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/fssimplewindow_template.dir/link.d CMakeFiles/fssimplewindow_template.dir/main.cpp.o -o fssimplewindow_template  ../src/libfssimplewindow.a -lGL -lGLU -lX11

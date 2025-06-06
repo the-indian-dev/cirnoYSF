@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--dependency-file=CMakeFiles/sample00-lineart.dir/link.d "CMakeFiles/sample00-lineart.dir/sample00-lineart/sample00-lineart.cpp.o" -o sample00-lineart  ../src/libfssimplewindow.a ../../ysbitmapfont/src/libysbitmapfont.a -lGL -lGLU -lX11 ../../ysgl/src/libysgl.a -lpthread -static-libstdc++ -static-libgcc

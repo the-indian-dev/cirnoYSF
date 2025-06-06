@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcomportlib.a CMakeFiles/comportlib.dir/comport.cpp.o CMakeFiles/comportlib.dir/comport_null.cpp.o
+/usr/bin/ranlib libcomportlib.a

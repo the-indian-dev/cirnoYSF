@@ -8,7 +8,11 @@ if(NOT "${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore" AND NOT ANDROID)
 	set(BUILD_YSFLIGHT_CONSOLE_SERVER 1)
 endif()
 
-
+# Detect MinGW/MSYS2 GCC compiler on Windows
+if(WIN32 AND (CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	set(MINGW TRUE)
+	message(STATUS "Detected MinGW/MSYS2 GCC compiler")
+endif()
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "WindowsStore")
 	add_definitions(-DYS_IS_UNIVERSAL_WINDOWS_APP)
@@ -51,6 +55,10 @@ endif()
 
 if(MSVC)
 	add_subdirectory(platform/win32)
+	add_subdirectory(sounddll/win32)
+	add_subdirectory(voicedll/generic)
+elseif(MINGW)
+	add_subdirectory(platform/mingw)
 	add_subdirectory(sounddll/win32)
 	add_subdirectory(voicedll/generic)
 elseif(ANDROID)

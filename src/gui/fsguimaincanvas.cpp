@@ -35,6 +35,7 @@
 #include "fsmenu.h"
 #include "fsguicommondialog.h"
 #include "fsguimaincanvas.h"
+#include "platform/common/fswindow.h"
 
 ////////////////////////////////////////////////////////////
 
@@ -83,6 +84,7 @@ FsGuiMainCanvas::FsGuiMainCanvas()
 	chooseAircraftDialog=NULL;
 	inputNumberDialog=NULL;
 	airCombatDlg=NULL;
+	progressDialog=NULL;
 
 	readiness=SIMULATION_INITIAL;
 }
@@ -98,6 +100,11 @@ FsGuiMainCanvas::~FsGuiMainCanvas()
 	{
 		delete inputNumberDialog;
 		inputNumberDialog=NULL;
+	}
+	if(NULL!=progressDialog)
+	{
+		delete progressDialog;
+		progressDialog=NULL;
 	}
 	if(NULL!=chooseAircraftDialog)
 	{
@@ -378,6 +385,69 @@ FsGuiDialog *FsGuiMainCanvas::StartInterceptMissionDialog(int nextActionCode)
 	AttachModalDialog(interceptMissionDialog);
 
 	return interceptMissionDialog;
+}
+
+void FsGuiMainCanvas::ShowProgressDialog(const wchar_t title[], const wchar_t iconText[])
+{
+	printf("DEBUG: ShowProgressDialog called\n");
+	if(NULL==progressDialog)
+	{
+		progressDialog=new FsGuiProgressDialog;
+		printf("DEBUG: Created new progress dialog\n");
+	}
+	progressDialog->Initialize();
+	progressDialog->Make(title, iconText);
+	AttachModalDialog(progressDialog);
+	printf("DEBUG: Progress dialog attached as modal\n");
+	
+	// Force redraw to make dialog visible
+	SetNeedRedraw(YSTRUE);
+	FsPollDevice();
+	printf("DEBUG: Forced redraw and poll device\n");
+}
+
+void FsGuiMainCanvas::UpdateProgress(int current, int total, const wchar_t filename[])
+{
+	printf("DEBUG: UpdateProgress called: %d/%d\n", current, total);
+	if(NULL!=progressDialog)
+	{
+		progressDialog->SetTotalFiles(total);
+		progressDialog->SetCurrentFile(current, filename);
+		printf("DEBUG: Progress dialog updated\n");
+		
+		// Force redraw to show updates
+		SetNeedRedraw(YSTRUE);
+		FsPollDevice();
+	}
+	else
+	{
+		printf("DEBUG: Progress dialog is NULL!\n");
+	}
+}
+
+void FsGuiMainCanvas::AddFailedFile(const wchar_t filename[])
+{
+	if(NULL!=progressDialog)
+	{
+		progressDialog->AddFailedFile(filename);
+	}
+}
+
+void FsGuiMainCanvas::HideProgressDialog()
+{
+	printf("DEBUG: HideProgressDialog called\n");
+	if(NULL!=progressDialog)
+	{
+		progressDialog->ShowFailedFiles();
+		DetachModalDialog();
+		delete progressDialog;
+		progressDialog=NULL;
+		printf("DEBUG: Progress dialog hidden and deleted\n");
+	}
+	else
+	{
+		printf("DEBUG: Progress dialog was already NULL\n");
+	}
 }
 
 FsGuiDialog *FsGuiMainCanvas::StartCloseAirSupportMissionDialog(int nextActionCode)

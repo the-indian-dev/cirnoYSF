@@ -23,7 +23,7 @@
 
 #include "fsguicommondialog.h"
 
-
+#include "../core/fsguiprogressdialog.h"
 
 #include "fsrunloop.h"
 
@@ -52,6 +52,7 @@ public:
 	class FsGuiChooseAircraft *chooseAircraftDialog;
 	class FsGuiInputNumberDialog *inputNumberDialog;
 	class FsGuiAirCombatDialog *airCombatDlg;
+	class FsGuiProgressDialog *progressDialog;
 
 	FsGuiMainCanvas();
 	~FsGuiMainCanvas();
@@ -93,6 +94,11 @@ public:
 
 	class FsGuiSelectMissionDialog *StartSelectMissionDialog(void);
 
+	void ShowProgressDialog(const wchar_t title[], const wchar_t iconText[]);
+	void UpdateProgress(int current, int total, const wchar_t filename[]);
+	void AddFailedFile(const wchar_t filename[]);
+	void HideProgressDialog();
+
 ////////////////////////////////////////////////////////////
 
 	virtual void OnTerminateSimulation(FsRunLoop::RUNMODE prevRunMode);
@@ -129,6 +135,19 @@ public:
 	void File_Recent_DeleteConfirmed(FsGuiDialog *,int returnCode);
 	void File_Recent_Load(const YsWString &fn);
 
+	void InstallAddon(void);
+	void InstallAddon_RequirementsChecked(FsGuiDialog *closedDialog, int returnCode);
+	void InstallAddon_FileSelected(FsGuiDialog *closedDialog, int returnCode);
+	void InstallAddon_ProcessArchive(const YsWString &archivePath);
+	YSBOOL ExtractZip(const YsWString &zipPath, const YsWString &destDir);
+	YSBOOL Extract7z(const YsWString &archivePath, const YsWString &destDir);
+	YSBOOL ExtractRar(const YsWString &archivePath, const YsWString &destDir);
+	YSRESULT FindAddonDirectory(const YsWString &tempDir, YsWString &addonDir);
+	YSRESULT InstallAddonFiles(const YsWString &addonDir, YsArray<YsWString> &replacedFiles);
+	YSRESULT CopyDirectoryRecursive(const YsWString &srcDir, const YsWString &destDir, YsArray<YsWString> &replacedFiles);
+	YSRESULT CopyFile(const YsWString &srcPath, const YsWString &destPath);
+	YSRESULT ProcessLstFiles(const YsWString &addonDir, const YsWString &ysflightDir, YsArray<YsWString> &replacedFiles);
+	YsWString JoinPath(const YsWString &dir, const YsWString &file);
 
 	FsRunLoop::RUNMODE nextRunMode;
 	void Sim_Fly(FsGuiPopUpMenuItem *);

@@ -36,8 +36,12 @@
 #include "graphics/common/fsopengl.h"
 
 #include "fsgenmdl.h"
+#include "platform/common/fswindow.h"
 
-
+// Global progress callback implementation
+FsWorldProgressCallback fsWorldProgressCallback = nullptr;
+FsWorldFileProgressCallback fsWorldFileProgressCallback = nullptr;
+FsWorldErrorCallback fsWorldErrorCallback = nullptr;
 
 static YSRESULT YsLoadFld(YsScenery &scn,const wchar_t fn[])
 {
@@ -1943,7 +1947,7 @@ YSRESULT FsWorld::LoadInternal(const wchar_t fn[],const YsVec3 &fieldPos,const Y
 							sim->SetFirstPlayerYfsIdent(objType,yfsIdent);
 						}
 						break;
-					case 50: // "CANCONTI" 
+					case 50: // "CANCONTI"
 						if(2<=args.GetN())
 						{
 							auto canContinue=YsStrToBool(args[1]);
@@ -2457,7 +2461,11 @@ YSRESULT FsWorld::LoadTemplate(InitializationOption opt)
 
 YSRESULT FsWorld::LoadAirplaneTemplate(InitializationOption opt)
 {
-	fsConsole.Printf("Loading Airplane Templates (aircraft/air*.lst)");
+	// fsConsole.Printf("Loading Airplane Templates (aircraft/air*.lst)");  // Commented out for progress dialog
+	if(nullptr != fsWorldProgressCallback)
+	{
+		fsWorldProgressCallback(0, 3, L"Aircraft Templates");
+	}
 	const wchar_t *userYsflightDir=FsGetUserYsflightDir();
 	if(YSTRUE==opt.loadDefAir)
 	{
@@ -2489,7 +2497,13 @@ YSRESULT FsWorld::LoadAirplaneTemplateList(const wchar_t rootDir[],const wchar_t
 
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
-		fsConsole.Printf("%s",cStr.Txt());
+		// fsConsole.Printf("%s",cStr.Txt());  // Commented out for progress dialog
+
+		// Report current file being loaded
+		if(nullptr != fsWorldFileProgressCallback)
+		{
+			fsWorldFileProgressCallback(filelist[i]);
+		}
 
 		FILE *fp=YsFileIO::Fopen(ful,"r");
 		if(fp!=NULL)
@@ -2513,7 +2527,17 @@ YSRESULT FsWorld::LoadAirplaneTemplateList(const wchar_t rootDir[],const wchar_t
 					lodFileName.SetUTF8String(ac>=5 ? av[4] : NULL);
 					if(LoadAirplaneTemplate(rootDir,propFileName,visFileName,collFileName,cockFileName,lodFileName)!=YSOK)
 					{
-						fsStderr.Printf("Cannot Load %s\n",av[0]);
+						// Collect error instead of showing immediately
+						if(nullptr != fsWorldErrorCallback)
+						{
+							YsWString errorFile;
+							errorFile.SetUTF8String(av[0]);
+							fsWorldErrorCallback(errorFile);
+						}
+						else
+						{
+							fsStderr.Printf("Cannot Load %s\n",av[0]);
+						}
 						res=YSERR;
 					}
 				}
@@ -2533,9 +2557,17 @@ YSRESULT FsWorld::LoadAirplaneTemplateList(const wchar_t rootDir[],const wchar_t
 		}
 		else
 		{
-			YsString utf8;
-			utf8.EncodeUTF8 <wchar_t> (ful.GetArray());
-			fsStderr.Printf("Cannot Open %s\n",utf8.Txt());
+			// Collect error instead of showing immediately
+			if(nullptr != fsWorldErrorCallback)
+			{
+				fsWorldErrorCallback(filelist[i]);
+			}
+			else
+			{
+				YsString utf8;
+				utf8.EncodeUTF8 <wchar_t> (ful.GetArray());
+				fsStderr.Printf("Cannot Open %s\n",utf8.Txt());
+			}
 			res=YSERR;
 		}
 	}
@@ -2764,7 +2796,11 @@ YSRESULT FsWorld::PrepareGroundVisual(YsListItem <FsGroundTemplate> *templ) cons
 
 YSRESULT FsWorld::LoadGroundTemplate(InitializationOption opt)
 {
-	fsConsole.Printf("Loading Ground-object Templates (ground/gro*.lst)");
+	// fsConsole.Printf("Loading Ground-object Templates (ground/gro*.lst)");  // Commented out for progress dialog
+	if(nullptr != fsWorldProgressCallback)
+	{
+		fsWorldProgressCallback(1, 3, L"Ground Object Templates");
+	}
 	const wchar_t *userYsflightDir=FsGetUserYsflightDir();
 	if(YSTRUE==opt.loadDefGnd)
 	{
@@ -2796,7 +2832,13 @@ YSRESULT FsWorld::LoadGroundTemplateList(const wchar_t rootDir[],const wchar_t s
 
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
-		fsConsole.Printf("%s",cStr.Txt());
+		// fsConsole.Printf("%s",cStr.Txt());  // Commented out for progress dialog
+
+		// Report current file being loaded
+		if(nullptr != fsWorldFileProgressCallback)
+		{
+			fsWorldFileProgressCallback(filelist[i]);
+		}
 
 		FILE *fp=YsFileIO::Fopen(ful,"r");
 		if(fp!=NULL)
@@ -2820,7 +2862,17 @@ YSRESULT FsWorld::LoadGroundTemplateList(const wchar_t rootDir[],const wchar_t s
 
 					if(LoadGroundTemplate(rootDir,propFileName,visFileName,collFileName,cockFileName,lodFileName)!=YSOK)
 					{
-						fsStderr.Printf("Cannot Load %s\n",av[0]);
+						// Collect error instead of showing immediately
+						if(nullptr != fsWorldErrorCallback)
+						{
+							YsWString errorFile;
+							errorFile.SetUTF8String(av[0]);
+							fsWorldErrorCallback(errorFile);
+						}
+						else
+						{
+							fsStderr.Printf("Cannot Load %s\n",av[0]);
+						}
 						res=YSERR;
 					}
 				}
@@ -2840,7 +2892,11 @@ YSRESULT FsWorld::LoadGroundTemplateList(const wchar_t rootDir[],const wchar_t s
 
 YSRESULT FsWorld::LoadFieldTemplate(InitializationOption opt)
 {
-	fsConsole.Printf("Loading Field Templates (scenery/sce*.lst)");
+	// fsConsole.Printf("Loading Field Templates (scenery/sce*.lst)");  // Commented out for progress dialog
+	if(nullptr != fsWorldProgressCallback)
+	{
+		fsWorldProgressCallback(2, 3, L"Field Templates");
+	}
 
 	const wchar_t *userYsflightDir=FsGetUserYsflightDir();
 	if(YSTRUE==opt.loadDefField)
@@ -2848,8 +2904,8 @@ YSRESULT FsWorld::LoadFieldTemplate(InitializationOption opt)
 		LoadFieldTemplateList(L".",L"scenery",L"sce",L"lst");
 		if(GetFieldTemplateName(0)==NULL)
 		{
-			fsConsole.Printf("Field Not Found. (Old version directory structure?)");
-			fsConsole.Printf("Trying scenary/sce*.lst <- Sorry for misspelling.");
+			// fsConsole.Printf("Field Not Found. (Old version directory structure?)");  // Commented out for progress dialog
+			// fsConsole.Printf("Trying scenary/sce*.lst <- Sorry for misspelling.");  // Commented out for progress dialog
 			LoadFieldTemplateList(L".",L"scenary",L"sce",L"lst");
 		}
 	}
@@ -2879,7 +2935,13 @@ YSRESULT FsWorld::LoadFieldTemplateList(const wchar_t rootDir[],const wchar_t su
 
 		YsString cStr;
 		cStr.EncodeUTF8 <wchar_t> (ful);
-		fsConsole.Printf("%s",(const char *)cStr.Txt());
+		// fsConsole.Printf("%s",(const char *)cStr.Txt());  // Commented out for progress dialog
+
+		// Report current file being loaded
+		if(nullptr != fsWorldFileProgressCallback)
+		{
+			fsWorldFileProgressCallback(filelist[i]);
+		}
 
 		FILE *fp=YsFileIO::Fopen(ful,"r");
 
@@ -2910,7 +2972,17 @@ YSRESULT FsWorld::LoadFieldTemplateList(const wchar_t rootDir[],const wchar_t su
 					}
 					if(LoadFieldTemplate(rootDir,argv[0],visFileName,stpFileName,yfsFileName,raceCourse)!=YSOK)
 					{
-						fsStderr.Printf("Cannot Load %s\n",argv[0].data());
+						// Collect error instead of showing immediately
+						if(nullptr != fsWorldErrorCallback)
+						{
+							YsWString errorFile;
+							errorFile.SetUTF8String(argv[0].data());
+							fsWorldErrorCallback(errorFile);
+						}
+						else
+						{
+							fsStderr.Printf("Cannot Load %s\n",argv[0].data());
+						}
 						res=YSERR;
 					}
 					// fsConsole.Printf("%s\n",argv[0].data());
@@ -5482,7 +5554,7 @@ YSRESULT FsWorld::PrepareAcrobat(FsDemoModeInfo &info,const char airType[],int a
 				int n,action;
 
 				n=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ? 4 : 6);
-				action=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ? 
+				action=(acroType==FSACRO_BOMBBURSTDOWN4SHIP ?
 				        FsAirshowControl::BOMBBURSTDOWN4SHIP : FsAirshowControl::BOMBBURSTDOWN6SHIP);
 
 				startPos.SetY(330.0);
@@ -8121,4 +8193,3 @@ void FsWorld::AdjustPrecisionOfFlightRecord(const double &precPos,const double &
 		sim->AdjustPrecisionOfFlightRecord(precPos,precAng);
 	}
 }
-

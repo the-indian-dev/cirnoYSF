@@ -1,0 +1,2 @@
+/usr/bin/ar qc libgeblgui_foundation.a CMakeFiles/geblgui_foundation.dir/ysgebl_gui_foundation.cpp.o CMakeFiles/geblgui_foundation.dir/ysshellexteditgui.cpp.o CMakeFiles/geblgui_foundation.dir/ysgebl_gui_foundation_io.cpp.o CMakeFiles/geblgui_foundation.dir/ysgebl_gui_foundation_draw.cpp.o
+/usr/bin/ranlib libgeblgui_foundation.a

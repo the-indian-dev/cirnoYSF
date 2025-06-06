@@ -1,0 +1,2 @@
+/usr/bin/ar qc libysglcpp.a CMakeFiles/ysglcpp.dir/ysglbuffer.cpp.o CMakeFiles/ysglcpp.dir/ysglbuffer_sphereutil.cpp.o CMakeFiles/ysglcpp.dir/ysglbuffermanager.cpp.o CMakeFiles/ysglcpp.dir/ysglparticlemanager.cpp.o CMakeFiles/ysglcpp.dir/ysglcascadedshadowmap.cpp.o CMakeFiles/ysglcpp.dir/ysglbuffer_arrowutil.cpp.o
+/usr/bin/ranlib libysglcpp.a

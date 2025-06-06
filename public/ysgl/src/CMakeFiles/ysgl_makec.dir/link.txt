@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wno-incompatible-pointer-types -Wl,--no-as-needed -Wl,--dependency-file=CMakeFiles/ysgl_makec.dir/link.d CMakeFiles/ysgl_makec.dir/glsl_src/makec.cpp.o -o ../../../exe/ysgl_makec  ../../ysclass/src/libysclass.a

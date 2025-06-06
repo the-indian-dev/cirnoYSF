@@ -1,0 +1,2 @@
+/usr/bin/ar qc libfssimplefiledialog.a CMakeFiles/fssimplefiledialog.dir/linux/fssimplefiledialog_linux.cpp.o CMakeFiles/fssimplefiledialog.dir/fssimplefiledialog.cpp.o
+/usr/bin/ranlib libfssimplefiledialog.a

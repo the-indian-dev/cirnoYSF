@@ -48,7 +48,8 @@ public:
 	FsGuiButton *addComputerAircraft;
 
 	FsGuiButton *specifyEnvironment;
-	FsGuiButton *dayNight[2];
+	FsGuiButton *dayNight[3];
+	FsGuiButton *weatherType[2];
 	FsGuiNumberBox *windDir;
 	FsGuiNumberBox *windSpd;
 	FsGuiNumberBox *visibility;
