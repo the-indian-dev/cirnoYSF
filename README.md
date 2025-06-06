@@ -9,7 +9,6 @@
 
 <p align="center">
   <a href="https://opensource.org/licenses/BSD-3-Clause"><img src="https://img.shields.io/badge/license-BSD%203--Clause-blue.svg"></a>
-  <img src="https://img.shields.io/badge/platform-Linux-lightgrey?logo=linux">
   <img src="https://img.shields.io/badge/status-Actively%20Maintained-brightgreen">
 </p>
 
@@ -39,7 +38,8 @@
 
 <!-- Replace with actual screenshots -->
 <p align="center">
-  <img src="assets/screenshot1.png" alt="Planes parked with mountains in background while it is raining." width="45%">
+  <img src="assets/ss1.png" alt="Planes parked with mountains in background while it is raining." width="45%">
+  <img src="assets/ss2.png" alt="Planes flying in sunset while its raining." width="45%">
 </p>
 
 ---
@@ -87,5 +87,4 @@ Licensed under the **BSD 3-Clause License** – see [LICENSE](LICENSE) for detai
 <p align="center">
   <strong>Built with passion, ice, and code.</strong>
 </p>
-```
 
