@@ -53,8 +53,25 @@ jobs:
           sudo apt-get install -y \
             libgl1-mesa-dev \
             libglu1-mesa-dev \
+            libglew-dev \ # Added libglew-dev for Linux
             libasound2-dev \
             libpulse-dev
+
+      # --- START: Added steps for vcpkg and GLEW on Windows ---
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}/vcpkg
+          ${{ github.workspace }}/vcpkg/bootstrap-vcpkg.bat -disableMetrics
+        shell: cmd
+
+      - name: Install GLEW using vcpkg (Windows)
+        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
+        run: ${{ github.workspace }}/vcpkg/vcpkg install glew:x64-windows-static
+        # Use glew:x86-windows-static if you intend to build 32-bit.
+        # x64 is default for windows-latest runners.
+        shell: cmd
+      # --- END: Added steps for vcpkg and GLEW on Windows ---
 
       - name: Configure CMake (Linux)
         if: runner.os == 'Linux'
@@ -62,6 +79,8 @@ jobs:
         shell: bash
         run: |
           echo "Configuring CMake for Linux with GCC/Clang specific flags"
+          # Note: If your CMakeLists.txt uses find_package(GLEW), adding libglew-dev above should be enough.
+          # Otherwise, you might need to adjust include/link flags if GLEW isn't found automatically.
           cmake \
             -S src \
             -B ${{ steps.strings.outputs.build-output-dir }} \
@@ -73,15 +92,17 @@ jobs:
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
         working-directory: ${{ github.workspace }}
-        shell: cmd # Using cmd for Windows
+        shell: cmd
         run: |
-          echo "Configuring CMake for Windows (MSVC)"
-          echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
+          echo "Configuring CMake for Windows (MSVC) with vcpkg"
+          set VCPKG_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
           set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
           cmake -S src ^
             -B ${{ steps.strings.outputs.build-output-dir }} ^
+            -DCMAKE_TOOLCHAIN_FILE="%VCPKG_TOOLCHAIN_FILE%" ^
+            -DGLEW_STATIC=ON ^
             -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
             -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^

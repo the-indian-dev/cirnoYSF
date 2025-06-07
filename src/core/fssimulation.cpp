@@ -20,7 +20,6 @@
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
 #include "graphics/common/fsculling.h"
-#include <ysgl.h>
 
 #include "fspluginmgr.h"
 #include "graphics/common/fsfontrenderer.h"
