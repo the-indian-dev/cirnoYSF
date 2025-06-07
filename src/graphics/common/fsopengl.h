@@ -5,11 +5,6 @@
 #include <ysviewcontrol.h>
 #include "fsdef.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#include <GL/glew.h>
-#endif
-
 class FsProjection
 {
 public:
