@@ -3,9 +3,9 @@ name: CMake on multiple platforms for dev build
 
 on:
   push:
-    branches: ["dev"]
+    branches: [ "dev" ]
   pull_request:
-    branches: ["dev"]
+    branches: [ "dev" ]
 
 jobs:
   build:
@@ -36,113 +36,92 @@ jobs:
             c_compiler: cl
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Set reusable strings
-        id: strings
-        shell: bash
-        run: |
-          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-          echo "main-output-dir=${{ github.workspace }}/build/main" >> "$GITHUB_OUTPUT"
+    - name: Set reusable strings
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "main-output-dir=${{ github.workspace }}/build/main" >> "$GITHUB_OUTPUT"
 
-      - name: Install development libraries (Linux)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgl1-mesa-dev \
-            libglu1-mesa-dev \
-            libglew-dev \ # Added libglew-dev for Linux
-            libasound2-dev \
-            libpulse-dev
+    - name: Install development libraries (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libgl1-mesa-dev \
+          libglu1-mesa-dev \
+          libasound2-dev \
+          libpulse-dev
 
-      # --- START: Added steps for vcpkg and GLEW on Windows ---
-      - name: Bootstrap vcpkg (Windows)
-        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
-        run: |
-          git clone https://github.com/microsoft/vcpkg.git ${{ github.workspace }}/vcpkg
-          ${{ github.workspace }}/vcpkg/bootstrap-vcpkg.bat -disableMetrics
-        shell: cmd
+    - name: Configure CMake (Linux)
+      if: runner.os == 'Linux'
+      working-directory: ${{ github.workspace }}
+      shell: bash
+      run: |
+        echo "Configuring CMake for Linux with GCC/Clang specific flags"
+        cmake \
+          -S src \
+          -B ${{ steps.strings.outputs.build-output-dir }} \
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+          -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
+          -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
-      - name: Install GLEW using vcpkg (Windows)
-        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
-        run: ${{ github.workspace }}/vcpkg/vcpkg install glew:x64-windows-static
-        # Use glew:x86-windows-static if you intend to build 32-bit.
-        # x64 is default for windows-latest runners.
-        shell: cmd
-      # --- END: Added steps for vcpkg and GLEW on Windows ---
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ${{ github.workspace }}
+      shell: cmd # Using cmd for Windows
+      run: |
+        echo "Configuring CMake for Windows (MSVC)"
+        echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
+        set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
+        cmake -S src ^
+          -B ${{ steps.strings.outputs.build-output-dir }} ^
+          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
+          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+          -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
+          -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
+          :: No -Wno-incompatible-pointer-types for MSVC by default.
 
-      - name: Configure CMake (Linux)
-        if: runner.os == 'Linux'
-        working-directory: ${{ github.workspace }}
-        shell: bash
-        run: |
-          echo "Configuring CMake for Linux with GCC/Clang specific flags"
-          # Note: If your CMakeLists.txt uses find_package(GLEW), adding libglew-dev above should be enough.
-          # Otherwise, you might need to adjust include/link flags if GLEW isn't found automatically.
-          cmake \
-            -S src \
-            -B ${{ steps.strings.outputs.build-output-dir }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} \
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} \
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
-            -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
-            -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    - name: Build
+      run: >
+        cmake --build ${{ steps.strings.outputs.build-output-dir }}
+        --config ${{ matrix.build_type }}
+        --parallel
 
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows' # This will only run for your 'cl' compiler jobs on Windows
-        working-directory: ${{ github.workspace }}
-        shell: cmd
-        run: |
-          echo "Configuring CMake for Windows (MSVC) with vcpkg"
-          set VCPKG_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
-          set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
-          cmake -S src ^
-            -B ${{ steps.strings.outputs.build-output-dir }} ^
-            -DCMAKE_TOOLCHAIN_FILE="%VCPKG_TOOLCHAIN_FILE%" ^
-            -DGLEW_STATIC=ON ^
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
-            -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
-            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-            -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
-            -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
-            :: No -Wno-incompatible-pointer-types for MSVC by default.
+    - name: Copy icon
+      if: success()
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        ICON_SOURCE_PATH="src/misc/logo.png"
+        ICON_DEST_DIR="${{ steps.strings.outputs.main-output-dir }}/misc"
 
-      - name: Build
-        run: >
-          cmake --build ${{ steps.strings.outputs.build-output-dir }}
-          --config ${{ matrix.build_type }}
-          --parallel
+        if [ -f "$ICON_SOURCE_PATH" ]; then
+          echo "Icon found at $ICON_SOURCE_PATH. Attempting to copy..."
+          mkdir -p "$ICON_DEST_DIR"
+          cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/logo.png"
+          echo "Icon copied to $ICON_DEST_DIR/logo.png"
+        else
+          echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
+        fi
 
-      - name: Copy icon
-        if: success()
-        shell: bash
-        working-directory: ${{ github.workspace }}
-        run: |
-          ICON_SOURCE_PATH="src/misc/logo.png"
-          ICON_DEST_DIR="${{ steps.strings.outputs.main-output-dir }}/misc"
+    - name: Test
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: ctest --build-config ${{ matrix.build_type }} -V
 
-          if [ -f "$ICON_SOURCE_PATH" ]; then
-            echo "Icon found at $ICON_SOURCE_PATH. Attempting to copy..."
-            mkdir -p "$ICON_DEST_DIR"
-            cp "$ICON_SOURCE_PATH" "$ICON_DEST_DIR/logo.png"
-            echo "Icon copied to $ICON_DEST_DIR/logo.png"
-          else
-            echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
-          fi
-
-      - name: Test
-        working-directory: ${{ steps.strings.outputs.build-output-dir }}
-        run: ctest --build-config ${{ matrix.build_type }} -V
-
-      - name: Upload 'main' directory artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Main-Build-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
-          path: ${{ steps.strings.outputs.main-output-dir }}
-          if-no-files-found: warn
-          retention-days: 7
+    - name: Upload 'main' directory artifact
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: Main-Build-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.build_type }}
+        path: ${{ steps.strings.outputs.main-output-dir }}
+        if-no-files-found: warn
+        retention-days: 7
