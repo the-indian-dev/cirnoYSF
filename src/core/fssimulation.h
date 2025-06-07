@@ -927,6 +927,8 @@ protected:
 	void SimDrawBlackout(const ActualViewMode &actualViewMode) const;
 	void SimDrawAirplane(const ActualViewMode &actualViewMode,const class FsProjection &proj,unsigned int drawFlag) const;
 	void SimDrawGround(const ActualViewMode &actualViewMode,const class FsProjection &proj,unsigned int drawFlag) const;
+	void SimDrawAirplaneSafe(const ActualViewMode &actualViewMode,const class FsProjection &proj,unsigned int drawFlag) const;
+	void SimDrawGroundSafe(const ActualViewMode &actualViewMode,const class FsProjection &proj,unsigned int drawFlag) const;
 	void SimDrawAirplaneVaporSmoke(void) const;
 	void SimDrawField(const ActualViewMode &actualViewMode,const class FsProjection &proj) const;
 	void SimDrawShadow(const ActualViewMode &actualViewMode,const class FsProjection &proj) const;        // For OpenGL/Direct3D, not for BlueImpulseSDK

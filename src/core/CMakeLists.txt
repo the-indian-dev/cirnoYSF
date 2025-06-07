@@ -27,6 +27,7 @@ add_library(${TARGET_NAME}
 	fspluginmgr.cpp
 	fssiminfo.cpp
 	fssimulation.cpp
+	fssimulation_safe.cpp
 	fssimulationdemomode.cpp
 	fssimulationfileio.cpp
 	fsstdout.cpp
