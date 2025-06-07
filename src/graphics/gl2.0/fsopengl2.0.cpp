@@ -287,19 +287,6 @@ void FsInitializeOpenGL(void)
 	YsGLSLSetShared3DRendererSpecularExponent(600.0f);
 
 	YsGLSLCreateSharedBitmapFontRenderer();
-
-	// Initialize OpenGL 2.0 optimizations
-	printf("YS Flight OpenGL 2.0 Renderer - Optimizations Enabled\n");
-	
-	// Enable additional OpenGL optimizations
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
-	glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
-	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
-	glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
-	
-	// Optimize for performance
-	glDisable(GL_DITHER);
-	glDisable(GL_MULTISAMPLE);
 }
 
 void FsReinitializeOpenGL(void)
@@ -794,39 +781,9 @@ void FsSetCameraPosition(const YsVec3 &pos,const YsAtt3 &att,YSBOOL zClear)
 
 void FsFlushScene(void)
 {
-	// Optimized GPU command batching and submission
-	static int frameCount = 0;
-	static GLuint lastBoundTexture = 0;
-	static GLenum lastBlendMode = GL_FUNC_ADD;
-	frameCount++;
-	
-	// Minimize state changes by tracking and avoiding redundant calls
-	GLuint currentTexture;
-	glGetIntegerv(GL_TEXTURE_BINDING_2D, (GLint*)&currentTexture);
-	if (currentTexture != lastBoundTexture) {
-		lastBoundTexture = currentTexture;
-	}
-	
-	// Batch GPU commands - flush less frequently for better performance
-	if (frameCount % 2 == 0)
-	{
-		glFlush();
-	}
-	
-	// Periodic GPU synchronization for stability
-	if (frameCount % 120 == 0)
-	{
-		glFinish();
-		// Reset OpenGL error state periodically
-		while (glGetError() != GL_NO_ERROR) { /* Clear errors */ }
-	}
-	
-	// GPU memory hint: suggest driver optimization every 10 seconds (~600 frames at 60fps)
-	if (frameCount % 600 == 0)
-	{
-		// Hint to driver that we want maximum performance
-		glHint(GL_GENERATE_MIPMAP_HINT, GL_FASTEST);
-	}
+	// This function is for compabitiliby with Blue Impulse 3DG-SDK only.
+	// Nothing to do here.
+	glFlush();
 }
 
 void FsDrawString(int x,int y,const char str[],const YsColor &col)
