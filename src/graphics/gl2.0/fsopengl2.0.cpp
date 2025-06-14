@@ -32,7 +32,12 @@ extern "C" {
     int WINAPI wglGetSwapIntervalEXT(void);
     typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
     typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+    typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
 }
+
+// Global variable to track OpenGL context changes
+static HGLRC g_lastKnownContext = NULL;
+static int g_contextChangeCount = 0;
 #endif
 
 
@@ -220,7 +225,7 @@ void FsInitializeOpenGL(void)
 	// Disable VSync to unlock framerate
 	printf("DEBUG: FsInitializeOpenGL - Attempting to disable VSync on Windows...\n");
 	
-	// Check if we have an active OpenGL context
+	// Check if we have an active OpenGL context and track context changes
 	HGLRC hglrc = wglGetCurrentContext();
 	if(hglrc == NULL)
 	{
@@ -228,23 +233,76 @@ void FsInitializeOpenGL(void)
 	}
 	else
 	{
-		printf("DEBUG: Active OpenGL context found, proceeding with VSync disable...\n");
+		// Track OpenGL context changes
+		if(g_lastKnownContext != hglrc)
+		{
+			g_contextChangeCount++;
+			printf("DEBUG: OpenGL context changed! Count: %d, Old: %p, New: %p\n", 
+				   g_contextChangeCount, g_lastKnownContext, hglrc);
+			g_lastKnownContext = hglrc;
+		}
+		else
+		{
+			printf("DEBUG: Same OpenGL context as before: %p\n", hglrc);
+		}
+		
+		printf("DEBUG: Active OpenGL context found, proceeding with aggressive VSync disable...\n");
 		
 		YSBOOL vsyncDisabled = YSFALSE;
 		
-		// Method 1: Try WGL_EXT_swap_control
+		// Get function pointers
 		PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		
+		// Check current swap interval before attempting to change it
+		if(wglGetSwapIntervalEXT != NULL)
+		{
+			int currentInterval = wglGetSwapIntervalEXT();
+			printf("DEBUG: Current swap interval before changes: %d\n", currentInterval);
+		}
+		
+		// Method 1: Aggressive EXT approach with verification
 		if(wglSwapIntervalEXT != NULL)
 		{
-			printf("DEBUG: Found wglSwapIntervalEXT, attempting to disable VSync...\n");
-			if(wglSwapIntervalEXT(0) == TRUE)  // 0 = disable VSync
+			printf("DEBUG: Found wglSwapIntervalEXT, attempting aggressive VSync disable...\n");
+			
+			// Try multiple times to force compliance
+			for(int attempt = 0; attempt < 5; attempt++)
 			{
-				printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalEXT!\n");
-				vsyncDisabled = YSTRUE;
-			}
-			else
-			{
-				printf("DEBUG: FAILED - wglSwapIntervalEXT(0) returned FALSE\n");
+				if(wglSwapIntervalEXT(0) == TRUE)
+				{
+					// Verify it actually worked
+					if(wglGetSwapIntervalEXT != NULL)
+					{
+						int verifyInterval = wglGetSwapIntervalEXT();
+						printf("DEBUG: Attempt %d - Set result: SUCCESS, Verified interval: %d\n", 
+							   attempt + 1, verifyInterval);
+						if(verifyInterval == 0)
+						{
+							printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalEXT (verified)!\n");
+							vsyncDisabled = YSTRUE;
+							break;
+						}
+						else
+						{
+							printf("DEBUG: WARNING - Driver ignored vsync disable on attempt %d\n", attempt + 1);
+						}
+					}
+					else
+					{
+						printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalEXT (attempt %d)!\n", attempt + 1);
+						vsyncDisabled = YSTRUE;
+						break;
+					}
+				}
+				else
+				{
+					printf("DEBUG: FAILED - wglSwapIntervalEXT(0) returned FALSE on attempt %d\n", attempt + 1);
+				}
+				
+				// Small delay between attempts
+				Sleep(1);
 			}
 		}
 		else
@@ -253,49 +311,73 @@ void FsInitializeOpenGL(void)
 		}
 		
 		// Method 2: Try WGL_ARB_swap_control if EXT failed
-		if(vsyncDisabled != YSTRUE)
+		if(vsyncDisabled != YSTRUE && wglSwapIntervalARB != NULL)
 		{
-			PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
-			if(wglSwapIntervalARB != NULL)
+			printf("DEBUG: Trying wglSwapIntervalARB as fallback...\n");
+			for(int attempt = 0; attempt < 3; attempt++)
 			{
-				printf("DEBUG: Found wglSwapIntervalARB, attempting to disable VSync...\n");
-				if(wglSwapIntervalARB(0) == TRUE)  // 0 = disable VSync
+				if(wglSwapIntervalARB(0) == TRUE)
 				{
-					printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalARB!\n");
+					printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalARB (attempt %d)!\n", attempt + 1);
 					vsyncDisabled = YSTRUE;
+					break;
 				}
 				else
 				{
-					printf("DEBUG: FAILED - wglSwapIntervalARB(0) returned FALSE\n");
+					printf("DEBUG: FAILED - wglSwapIntervalARB(0) returned FALSE on attempt %d\n", attempt + 1);
 				}
-			}
-			else
-			{
-				printf("DEBUG: wglSwapIntervalARB not available\n");
+				Sleep(1);
 			}
 		}
 		
-		// Method 3: Try adaptive sync for compatibility
+		// Method 3: Try adaptive sync and other values
 		if(vsyncDisabled != YSTRUE && wglSwapIntervalEXT != NULL)
 		{
-			printf("DEBUG: Trying adaptive vsync as fallback...\n");
-			if(wglSwapIntervalEXT(-1) == TRUE)  // Adaptive vsync / immediate mode
+			printf("DEBUG: Trying alternative swap interval values...\n");
+			
+			// Try adaptive vsync (negative values)
+			if(wglSwapIntervalEXT(-1) == TRUE)
 			{
-				printf("DEBUG: Adaptive vsync enabled (may reduce frame limiting)\n");
+				printf("DEBUG: Adaptive vsync (-1) set successfully\n");
+			}
+			
+			// Try immediate mode (some drivers respond to this)
+			if(wglSwapIntervalEXT(0) == TRUE)
+			{
+				printf("DEBUG: Final attempt at immediate mode succeeded\n");
+			}
+		}
+		
+		// Final verification
+		if(wglGetSwapIntervalEXT != NULL)
+		{
+			int finalInterval = wglGetSwapIntervalEXT();
+			printf("DEBUG: Final swap interval after all attempts: %d\n", finalInterval);
+			if(finalInterval == 0)
+			{
+				printf("DEBUG: FINAL SUCCESS - VSync is disabled (interval = 0)\n");
 			}
 			else
 			{
-				printf("DEBUG: FAILED - Adaptive vsync also failed\n");
+				printf("DEBUG: FINAL WARNING - VSync still enabled (interval = %d) - Driver override likely\n", finalInterval);
+				printf("DEBUG: This may be due to driver-level frame limiting or application profiles\n");
+				printf("DEBUG: User should check graphics driver settings and disable VSync there\n");
 			}
 		}
 		
 		if(vsyncDisabled != YSTRUE)
 		{
-			printf("DEBUG: WARNING - VSync disable methods failed! Frame rate may be limited by driver.\n");
+			printf("DEBUG: WARNING - All VSync disable methods failed! Frame rate may be limited by driver.\n");
+			printf("DEBUG: Possible causes:\n");
+			printf("DEBUG: 1. Graphics driver override/application profile\n");
+			printf("DEBUG: 2. Windows Game Mode interference\n");
+			printf("DEBUG: 3. Power management throttling\n");
+			printf("DEBUG: 4. Multiple OpenGL contexts with different settings\n");
 		}
 	}
 	
 	printf("DEBUG: VSync disable attempt completed in FsInitializeOpenGL\n");
+	printf("DEBUG: Context tracking - Total context changes so far: %d\n", g_contextChangeCount);
 #endif
 
 	ysScnGlRwLightTex=~(unsigned int)0;
