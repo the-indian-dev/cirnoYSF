@@ -6732,8 +6732,8 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 			auto &commonTexture=FsCommonTexture::GetCommonTexture();
 			commonTexture.ReadyShadowMap();
 
-			// Use only first shadow map for maximum performance
-			for(int i=0; i<1 && i<commonTexture.GetMaxNumShadowMap(); ++i)
+			// Use all shadow maps like working modes to prevent caching issues
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
 			{
 				auto texUnit=commonTexture.GetShadowMapTexture(i);
 				if(nullptr!=texUnit)
