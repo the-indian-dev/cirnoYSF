@@ -14,6 +14,8 @@ fsopengl.cpp
 fstexturemanager.cpp
 fswirefont_makebuf.cpp
 fsculling.cpp
+fsexperimentalshadow.cpp
+fsexperimentalshadowintegration.cpp
 )
 
 set(HEADERS
@@ -25,6 +27,8 @@ fsfontrenderer.h
 fsconsole.h
 fstexturemanager.h
 fsculling.h
+fsexperimentalshadow.h
+fsexperimentalshadowintegration.h
 )
 
 add_library(${TARGET_NAME} ${SRCS} ${HEADERS})

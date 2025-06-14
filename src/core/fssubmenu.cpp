@@ -466,7 +466,9 @@ void FsSubMenu::ProcessSubMenu(class FsSimulation *sim,class FsFlightConfig &cfg
 			YsFlip(cfg.drawCoarseOrdinance);
 			break;
 		case FSKEY_S:
-			YsFlip(cfg.drawShadow);
+			cfg.shadowMode = (cfg.shadowMode + 1) % 3;
+			// Update legacy drawShadow for backward compatibility
+			cfg.drawShadow = (cfg.shadowMode != FSSHADOW_FAST) ? YSTRUE : YSFALSE;
 			break;
 		case FSKEY_L:
 			YsFlip(cfg.drawLightsInDaylight);
@@ -760,15 +762,17 @@ void FsSubMenu::Draw(const class FsSimulation *sim,class FsFlightConfig &cfg,int
 		}
 		sy+=fsAsciiRenderer.GetFontHeight();
 
-		switch(cfg.drawShadow)
+		switch(cfg.shadowMode)
 		{
 		default:
-			break;
-		case YSTRUE:
+		case FSSHADOW_AUTO:
 			FsDrawString(sx,sy,"S: Shadow Graphics (Now:AUTO)",YsWhite());
 			break;
-		case YSFALSE:
+		case FSSHADOW_FAST:
 			FsDrawString(sx,sy,"S: Shadow Graphics (Now:FAST)",YsWhite());
+			break;
+		case FSSHADOW_EXPERIMENTAL:
+			FsDrawString(sx,sy,"S: Shadow Graphics (Now:EXPERIMENTAL)",YsWhite());
 			break;
 		}
 		sy+=fsAsciiRenderer.GetFontHeight();

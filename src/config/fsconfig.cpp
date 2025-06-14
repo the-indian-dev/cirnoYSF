@@ -20,6 +20,7 @@ void FsFlightConfig::SetDefault(void)
 	terminateUponPlayerCrash=YSTRUE;
 	horizonGradation=YSTRUE;
 	drawShadow=YSTRUE;
+	shadowMode=FSSHADOW_AUTO;
 	drawCloud=YSTRUE;
 	ceiling=4000.0;
 	cloudType=FSCLOUDSOLID;
@@ -119,6 +120,7 @@ void FsFlightConfig::SetFastMode(void)
 	smkRemainTime=15.0;
 	smkStep=8;
 	drawShadow=YSFALSE;
+	shadowMode=FSSHADOW_FAST;
 	horizonGradation=YSFALSE;
 	drawCloud=YSFALSE;
 	drawOrdinance=YSFALSE;
@@ -222,6 +224,8 @@ const char *const FsFlightConfig::keyWordSource[]=
 	"PHONGSHAD",  // 2014/07/15
 
 	"RLDAYVISI",  // 2017/05/02
+
+	"SHADOWMOD",  // 2024/01/01 - Experimental shadow mode
 
 	NULL
 };
@@ -512,6 +516,13 @@ YSRESULT FsFlightConfig::SendCommand(const char cmd[])
 
 			case 61: // 	"RLDAYVISI",  // 2017/05/02
 				return FsGetLength(drawLightsInDaylightVisibilityThr,av[1]);
+
+			case 62: // 	"SHADOWMOD",  // 2024/01/01 - Experimental shadow mode
+				shadowMode=atoi(av[1]);
+				if(shadowMode < 0 || shadowMode > 2) shadowMode = FSSHADOW_AUTO;
+				// Update legacy drawShadow for compatibility
+				drawShadow = (shadowMode != FSSHADOW_FAST) ? YSTRUE : YSFALSE;
+				return YSOK;
 			}
 		}
 		else
@@ -575,6 +586,7 @@ YSRESULT FsFlightConfig::Save(const wchar_t fn[])
 		fprintf(fp,"SMOKESTEP %d\n",smkStep);
 
 		fprintf(fp,"DRWSHADOW %s\n",FsTrueFalseString(drawShadow));
+		fprintf(fp,"SHADOWMOD %d\n",shadowMode);
 		fprintf(fp,"HRIZNGRAD %s\n",FsTrueFalseString(horizonGradation));
 		fprintf(fp,"DRAWCLOUD %s\n",FsTrueFalseString(drawCloud));
 		switch(cloudType)

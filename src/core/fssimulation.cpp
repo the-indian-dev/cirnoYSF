@@ -20,6 +20,7 @@
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
 #include "graphics/common/fsculling.h"
+#include "graphics/common/fsexperimentalshadowintegration.h"
 
 #include "fspluginmgr.h"
 #include "graphics/common/fsfontrenderer.h"
@@ -352,6 +353,9 @@ FsSimulation::~FsSimulation()
 	FsAirTrafficSequence::Delete(airTrafficSequence);
 
 	delete cfgPtr;
+
+	// Cleanup experimental shadow renderer
+	FS_EXPERIMENTAL_SHADOW_CLEANUP();
 
 #ifndef YS_SCSV
 	if(replayDlg!=NULL)
@@ -6618,68 +6622,93 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 {
 	if(YSTRUE==FsIsShadowMapAvailable() && cfgPtr->drawShadow==YSTRUE)
 	{
-		auto &commonTexture=FsCommonTexture::GetCommonTexture();
-		commonTexture.ReadyShadowMap();
-
-		for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
+		// Check if experimental shadow mode is enabled
+		if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL)
 		{
-			auto texUnit=commonTexture.GetShadowMapTexture(i);
-			if(nullptr!=texUnit)
+			// Initialize experimental shadow renderer if not already done
+			FS_EXPERIMENTAL_SHADOW_INIT(*cfgPtr);
+			
+			// Use experimental shadow renderer
+			YsVec3 viewPos = actualViewMode.viewPoint;
+			YsVec3 viewDir = actualViewMode.viewAttitude.GetForwardVector();
+			YsVec3 lightDir = cfgPtr->lightSourceDirection;
+			
+			FsProjection prj;
+			GetProjection(prj,actualViewMode);
+			
+			// Use identity matrix temporarily for testing
+			YsMatrix4x4 projMatrix = YsIdentity4x4();
+			
+			FS_EXPERIMENTAL_SHADOW_RENDER(*cfgPtr, viewPos, viewDir, lightDir, world, 
+			                            actualViewMode.viewMat, projMatrix);
+		}
+		else if(cfgPtr->shadowMode == FSSHADOW_AUTO)
+		{
+			// Use original shadow rendering system
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
 			{
-				auto &projMat=actualViewMode.shadowProjMat[i];
-				auto &viewMat=actualViewMode.shadowViewMat[i];
-				auto texWid=texUnit->GetWidth();
-				auto texHei=texUnit->GetHeight();
-
-				texUnit->BindFrameBuffer();
-
-				FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
-
-				field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
-
-				FsAirplane *airSeeker;
-				YsVec3 pos;
-				airSeeker=NULL;
-				while((airSeeker=FindNextAirplane(airSeeker))!=NULL)
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
 				{
-					if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					FsAirplane *airSeeker;
+					YsVec3 pos;
+					airSeeker=NULL;
+					while((airSeeker=FindNextAirplane(airSeeker))!=NULL)
 					{
-						continue;
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+
+						airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						if(cfgPtr->drawOrdinance==YSTRUE)
+						{
+							airSeeker->Prop().DrawOrdinanceVisual(
+							    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						}
 					}
 
-					airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
-					if(cfgPtr->drawOrdinance==YSTRUE)
+					FsGround *gndSeeker;
+					FsProjection prj;
+					GetProjection(prj,actualViewMode);
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL)
 					{
-						airSeeker->Prop().DrawOrdinanceVisual(
-						    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
 					}
+
+					FsEndRenderShadowMap();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
 				}
-
-				FsGround *gndSeeker;
-				FsProjection prj;
-				GetProjection(prj,actualViewMode);
-
-				gndSeeker=NULL;
-				while((gndSeeker=FindNextGround(gndSeeker))!=NULL)
-				{
-					if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
-					{
-						continue;
-					}
-					if(gndSeeker->Prop().NoShadow()==YSTRUE)
-					{
-						continue;
-					}
-
-					gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
-				}
-
-				FsEndRenderShadowMap();
-
-				texUnit->Bind(5+i);
-				FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
 			}
 		}
+		// FSSHADOW_FAST mode: no shadows rendered
 	}
 }
 
