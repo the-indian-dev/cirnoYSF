@@ -105,6 +105,7 @@ static LRESULT WINAPI WindowFunc(HWND wnd,UINT msg,WPARAM wp,LPARAM lp);
 static void YsSetPixelFormat(HDC dc);
 static HPALETTE YsCreatePalette(HDC dc);
 static void InitializeOpenGL(HWND wnd);
+static void DisableVSync(void);
 
 
 ////////////////////////////////////////////////////////////
@@ -669,9 +670,11 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 			(*fsOnResizeCallBack)(fsOnResizeCallBackParam,wid,hei);
 		}
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		DisableVSync();
 		break;
 	case WM_PAINT:
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		DisableVSync();
 		exposure=1;
 		if(NULL!=fsOnPaintCallback)
 		{
@@ -1190,6 +1193,68 @@ static void InitializeOpenGL(HWND wnd)
 	}
 	
 	printf("DEBUG: Windows wrapper VSync disable completed. Context changes: %d\n", g_win32ContextChangeCount);
+}
+
+static void DisableVSync(void)
+{
+	printf("DEBUG: DisableVSync called from Windows wrapper\n");
+	
+	// Get function pointers
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+	PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+	
+	bool vsyncDisabled = false;
+	
+	// Method 1: Try EXT first
+	if(wglSwapIntervalEXT != NULL)
+	{
+		if(wglSwapIntervalEXT(0) == TRUE)
+		{
+			// Verify it worked
+			if(wglGetSwapIntervalEXT != NULL)
+			{
+				int verifyInterval = wglGetSwapIntervalEXT();
+				if(verifyInterval == 0)
+				{
+					printf("DEBUG: VSync disabled successfully (EXT verified)\n");
+					vsyncDisabled = true;
+				}
+				else
+				{
+					printf("DEBUG: VSync disable failed (EXT verification failed: %d)\n", verifyInterval);
+				}
+			}
+			else
+			{
+				printf("DEBUG: VSync disabled (EXT, no verification)\n");
+				vsyncDisabled = true;
+			}
+		}
+		else
+		{
+			printf("DEBUG: wglSwapIntervalEXT(0) returned FALSE\n");
+		}
+	}
+	
+	// Method 2: Try ARB if EXT failed
+	if(!vsyncDisabled && wglSwapIntervalARB != NULL)
+	{
+		if(wglSwapIntervalARB(0) == TRUE)
+		{
+			printf("DEBUG: VSync disabled successfully (ARB)\n");
+			vsyncDisabled = true;
+		}
+		else
+		{
+			printf("DEBUG: wglSwapIntervalARB(0) returned FALSE\n");
+		}
+	}
+	
+	if(!vsyncDisabled)
+	{
+		printf("DEBUG: WARNING - Failed to disable VSync\n");
+	}
 }
 
 int FsGetNumCurrentTouch(void)

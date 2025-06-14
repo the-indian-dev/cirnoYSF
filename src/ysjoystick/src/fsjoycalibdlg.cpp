@@ -375,6 +375,12 @@ printf("%s %d\n",__FUNCTION__,__LINE__);
 		YsJoyReaderSaveJoystickCalibrationInfo(nJoystick,joystick);
 printf("%s %d\n",__FUNCTION__,__LINE__);
 	}
+	
+#ifdef _WIN32
+	// Re-disable VSync after calibration dialog closes to prevent driver from re-enabling it
+	extern void FsDisableVSyncWindows(void);
+	FsDisableVSyncWindows();
+#endif
 }
 
 #ifdef GLX
@@ -500,6 +506,11 @@ void FsCalibrationDialog::CaptureHat(YsJoyReader &joystick,int hatId,int &hatVal
 		dlg->Show();
 
 		FsSwapBuffers();
+#ifdef _WIN32
+		// Re-disable VSync after buffer swap to prevent driver from re-enabling it
+		extern void FsDisableVSyncWindows(void);
+		FsDisableVSyncWindows();
+#endif
 		FsSleep(10);
 	}
 }

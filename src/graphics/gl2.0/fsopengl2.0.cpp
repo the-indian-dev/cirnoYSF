@@ -247,13 +247,22 @@ void FsInitializeOpenGL(void)
 		}
 		
 		printf("DEBUG: Active OpenGL context found, proceeding with aggressive VSync disable...\n");
-		
+	
 		YSBOOL vsyncDisabled = YSFALSE;
-		
-		// Get function pointers
-		PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-		PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
-		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+	
+		// Get function pointers - static to avoid repeated lookups
+		static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = nullptr;
+		static PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = nullptr;
+		static PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = nullptr;
+		static YSBOOL functionPointersInitialized = YSFALSE;
+	
+		if(YSFALSE == functionPointersInitialized)
+		{
+			wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+			wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+			wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+			functionPointersInitialized = YSTRUE;
+		}
 		
 		// Check current swap interval before attempting to change it
 		if(wglGetSwapIntervalEXT != NULL)
@@ -367,13 +376,26 @@ void FsInitializeOpenGL(void)
 		
 		if(vsyncDisabled != YSTRUE)
 		{
-			printf("DEBUG: WARNING - All VSync disable methods failed! Frame rate may be limited by driver.\n");
+			printf("DEBUG: WARNING - VSync disable methods failed! Frame rate may be limited by driver.\n");
 			printf("DEBUG: Possible causes:\n");
 			printf("DEBUG: 1. Graphics driver override/application profile\n");
 			printf("DEBUG: 2. Windows Game Mode interference\n");
 			printf("DEBUG: 3. Power management throttling\n");
 			printf("DEBUG: 4. Multiple OpenGL contexts with different settings\n");
 		}
+		
+		// Additional diagnostics for Windows driver issues
+		printf("DEBUG: === WINDOWS DRIVER DIAGNOSTICS ===\n");
+		printf("DEBUG: If VSync appears disabled but frame rate is still limited:\n");
+		printf("DEBUG: 1. Check NVIDIA Control Panel/AMD Radeon Settings:\n");
+		printf("DEBUG:    - Set 'Vertical sync' to 'Off' for this application\n");
+		printf("DEBUG:    - Set 'Power management mode' to 'Prefer maximum performance'\n");
+		printf("DEBUG:    - Disable any 'Frame Rate Limiter' settings\n");
+		printf("DEBUG: 2. Disable Windows Game Mode for this application\n");
+		printf("DEBUG: 3. Check if application has driver-specific profile forcing vsync\n");
+		printf("DEBUG: 4. Try running as administrator to bypass some driver restrictions\n");
+		printf("DEBUG: Note: This works under Wine because Wine doesn't have these driver overrides\n");
+		printf("DEBUG: =====================================\n");
 	}
 	
 	printf("DEBUG: VSync disable attempt completed in FsInitializeOpenGL\n");
@@ -1415,4 +1437,78 @@ void FsGraphicsTest(int i)
 	YsGLSLRenderTexture2D(bitmapRenderer,0,0,YSGLSL_HALIGN_LEFT,YSGLSL_VALIGN_TOP,256,256,i);
 	YsGLSLEndUseBitmapRenderer(bitmapRenderer);
 }
+
+#ifdef _WIN32
+void FsDisableVSyncWindows(void)
+{
+	printf("DEBUG: FsDisableVSyncWindows called\n");
+	
+	// Get function pointers - static to avoid repeated lookups
+	static PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = nullptr;
+	static PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = nullptr;
+	static PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = nullptr;
+	static YSBOOL functionPointersInitialized = YSFALSE;
+
+	if(YSFALSE == functionPointersInitialized)
+	{
+		wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+		wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+		wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		functionPointersInitialized = YSTRUE;
+		printf("DEBUG: VSync function pointers initialized\n");
+	}
+	
+	bool vsyncDisabled = false;
+	
+	// Method 1: Try EXT first
+	if(wglSwapIntervalEXT != NULL)
+	{
+		if(wglSwapIntervalEXT(0) == TRUE)
+		{
+			// Verify it worked
+			if(wglGetSwapIntervalEXT != NULL)
+			{
+				int verifyInterval = wglGetSwapIntervalEXT();
+				if(verifyInterval == 0)
+				{
+					printf("DEBUG: VSync disabled successfully (EXT verified)\n");
+					vsyncDisabled = true;
+				}
+				else
+				{
+					printf("DEBUG: VSync disable failed (EXT verification failed: %d)\n", verifyInterval);
+				}
+			}
+			else
+			{
+				printf("DEBUG: VSync disabled (EXT, no verification)\n");
+				vsyncDisabled = true;
+			}
+		}
+		else
+		{
+			printf("DEBUG: wglSwapIntervalEXT(0) returned FALSE\n");
+		}
+	}
+	
+	// Method 2: Try ARB if EXT failed
+	if(!vsyncDisabled && wglSwapIntervalARB != NULL)
+	{
+		if(wglSwapIntervalARB(0) == TRUE)
+		{
+			printf("DEBUG: VSync disabled successfully (ARB)\n");
+			vsyncDisabled = true;
+		}
+		else
+		{
+			printf("DEBUG: wglSwapIntervalARB(0) returned FALSE\n");
+		}
+	}
+	
+	if(!vsyncDisabled)
+	{
+		printf("DEBUG: WARNING - Failed to disable VSync in FsDisableVSyncWindows\n");
+	}
+}
+#endif
 
