@@ -8157,9 +8157,15 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 		}
 		else if(demoMode==YSTRUE)
 		{
-			FsDrawString(sx,sy,"Programmed By CaptainYS",YsWhite());
+			FsDrawString(sx,sy,"CirnoYSF - The ice-cold blazing-fast modern fork of YSFlight",YsWhite());
 			sy+=fsAsciiRenderer.GetFontHeight();
-			FsDrawString(sx,sy,"http://www.ysflight.com",YsWhite());
+			FsDrawString(sx,sy,"Fork of original YSFlight by Soji Yamakawa (CaptainYS)",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"Programmed by Ritabrata Das",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"https://cirnoysf.theindiandev.in/",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"Licensed under BSD 3-Clause License",YsWhite());
 			sy+=fsAsciiRenderer.GetFontHeight();
 			sy+=fsAsciiRenderer.GetFontHeight();
 		}

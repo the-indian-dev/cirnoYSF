@@ -68,7 +68,7 @@ $BGCOL 0
 +common/no                                         #No
 +common/error                                      #Error!
 
-+aboutdlg/title                                    #About YS FLIGHT SIMULATOR
++aboutdlg/title                                    #About CirnoYSF
 +aboutdlg/version                                  #Version
 
 +maindlg/showconsole                               #Show Console
@@ -336,7 +336,7 @@ $BGCOL 0
 +supportdlg/2ndline                                #YSFLIGHT is free software, and, you do not have to pay for enjoying this program.\nHowever, it costs me some money to maintain this project.  So I really appreciate\nif you could support YSFLIGHT project with one of the following methods.
 +supportdlg/3rdline                                #(1) Purchase a shareware program from:
 +supportdlg/4thline-1                              #(2) When you purchase a book, PC software, a CD, or any product from Amazon.com, \nplease open Amazon.com web site by clicking a link on
-+supportdlg/4thline-2                              # 
++supportdlg/4thline-2                              #
 +supportdlg/4thline-3                              #    and place an order.  (Note: Any purchase counts as long as you open Amazon.com web site by clickng a link on my web site.
 
 +supportdlg/jwordline-1                            #
@@ -345,7 +345,7 @@ $BGCOL 0
 +supportdlg/explainjword                           #
 
 +supportdlg/5thline-1                              #Please also visit sponsor sites linked from:
-+supportdlg/5thline-2                              # 
++supportdlg/5thline-2                              #
 +supportdlg/6thline                                #Thank you very much for supporting YSFLIGHT project.
 
 +explainjword/line1                                #
@@ -539,10 +539,10 @@ $BGCOL 0
 +menu/autoDemo-Acro-VixenBreak                     #Vixen Break
 +menu/autoDemo-Acro-BigBattleToShortDiaLoop        #Big Battle to Short Diamond Loop
 
-+menu/networkMenu                                  #Network
-+menu/network-Server                               #Server
-+menu/network-Client                               #Client
-+menu/network-Config                               #Network Option
++menu/networkMenu                                  #Multiplayer
++menu/network-Server                               #Host a Game
++menu/network-Client                               #Join a Game
++menu/network-Config                               #Multiplayer Preferences
 
 +menu/flightRecUtilMenu                            #Flight Record Utility
 +menu/flightRecUtil-TimeInterval                   #Set Time Interval
@@ -554,7 +554,7 @@ $BGCOL 0
 +menu/help-DefKeyEnglish                           #Default Key Strokes and Controls - English
 +menu/help-HelpJapanese                            #Help - Japanese
 +menu/help-DefKeyJapanese                          #Default Key Strokes and Controls - Japanese
-+menu/help-About                                   #About YSFLIGHT
++menu/help-About                                   #About CirnoYSF
 +menu/help-SupportYSFlight                         #Support YSFLIGHT Project
 
 +menu/learning                                     #Machine Learning
@@ -577,4 +577,3 @@ $BGCOL 0
 +joycalib_stickcircle                              #Make Complete Circle with the Stick Several Times and Press SPACE key
 +joycalib_stickneutral                             #Center Joystick and Press SPACE key
 +joycalib_next                                     #Next >>
-

@@ -89,12 +89,12 @@ static void ErrorCallbackFunction(const wchar_t *filename)
 
 #include <ysbitmap.h>
 
-const wchar_t *FsProgramName=L"YSFLIGHT";  // Different names for screen saver programs
+const wchar_t *FsProgramName=L"cirnoYSF";  // Different names for screen saver programs
 
 #ifndef YSFS_TESTVERSION
-const char *FsProgramTitle="YS FLIGHT SIMULATOR";  // Different names for screen saver programs
+const char *FsProgramTitle="cirnoYSF";  // Different names for screen saver programs
 #else
-const char *FsProgramTitle="YS FLIGHT SIMULATOR - Untested";  // Different names for screen saver programs
+const char *FsProgramTitle="cirnoYSF - Untested";  // Different names for screen saver programs
 #endif
 
 
@@ -144,10 +144,20 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 
 /* virtual */ void FsLazyWindowApplication::BeforeEverything(int ac,char *av[])
 {
-	printf("YSFLIGHT\n");
+	printf("================================================================================\n");
+	printf("                               ❄️  CirnoYSF  ❄️\n");
+	printf("          The ice-cold blazing-fast modern fork of YSFlight\n");
+	printf("================================================================================\n");
+	printf("\n");
+	printf("🎯 Fork of the original YSFlight by Soji Yamakawa (CaptainYS)\n");
+	printf("💻 Programmed by Ritabrata Das (https://theindiandev.in)\n");
+	printf("🌐 Website: https://cirnoysf.theindiandev.in/\n");
+	printf("📜 Licensed under BSD 3-Clause License\n");
+	printf("\n");
 	printf("VERSION %d\n",YSFLIGHT_VERSION);
 	printf("YFSVERSION %d\n",YSFLIGHT_YFSVERSION);
 	printf("NETVERSION %d\n",YSFLIGHT_NETVERSION);
+	printf("================================================================================\n");
 
 	YsCoordSysModel=YSLEFT_ZPLUS_YPLUS;
 
