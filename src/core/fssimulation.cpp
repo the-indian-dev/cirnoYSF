@@ -6719,6 +6719,30 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 				}
 			}
 		}
+		else if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL_FAST)
+		{
+			// EXPERIMENTAL_FAST mode: Use experimental shadow renderer with fast/ground-only settings
+			FS_EXPERIMENTAL_SHADOW_INIT(*cfgPtr);
+			
+			// Configure experimental renderer for fast mode
+			if(fsExperimentalShadowRenderer)
+			{
+				fsExperimentalShadowRenderer->SetShadowQuality(FSSHADOWQUALITY_LOW);
+				fsExperimentalShadowRenderer->SetMultithreadingEnabled(true);
+				fsExperimentalShadowRenderer->SetInstancingEnabled(true);
+				fsExperimentalShadowRenderer->SetSoftShadowsEnabled(false); // Disable for speed
+			}
+			
+			// Use experimental shadow renderer with multithreading
+			YsVec3 viewPos = actualViewMode.viewPoint;
+			YsVec3 viewDir = actualViewMode.viewAttitude.GetForwardVector();
+			YsVec3 lightDir = cfgPtr->lightSourceDirection;
+			
+			YsMatrix4x4 projMatrix = YsIdentity4x4();
+			
+			FS_EXPERIMENTAL_SHADOW_RENDER(*cfgPtr, viewPos, viewDir, lightDir, world, 
+			                            actualViewMode.viewMat, projMatrix);
+		}
 		else if(cfgPtr->shadowMode == FSSHADOW_AUTO)
 		{
 			// Use original shadow rendering system

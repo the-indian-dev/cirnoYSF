@@ -520,7 +520,7 @@ YSRESULT FsFlightConfig::SendCommand(const char cmd[])
 
 			case 62: // 	"SHADOWMOD",  // 2024/01/01 - Experimental shadow mode
 				shadowMode=atoi(av[1]);
-				if(shadowMode < 0 || shadowMode > 2) shadowMode = FSSHADOW_AUTO;
+				if(shadowMode < 0 || shadowMode > 3) shadowMode = FSSHADOW_AUTO;
 				// Update legacy drawShadow for compatibility
 				drawShadow = (shadowMode != FSSHADOW_FAST) ? YSTRUE : YSFALSE;
 				return YSOK;
