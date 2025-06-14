@@ -6642,6 +6642,9 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 					auto texHei=texUnit->GetHeight();
 
 					texUnit->BindFrameBuffer();
+					
+					// Force clear shadow map to prevent reusing cached shadows
+					glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
 
@@ -6713,6 +6716,10 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 					}
 
 					FsEndRenderShadowMap();
+					
+					// Ensure shadow map texture is properly updated and not cached
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					glFlush();
 
 					texUnit->Bind(5+i);
 					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
@@ -6751,8 +6758,8 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 					{
 						FsAirplane *airSeeker;
 						int airplaneCount = 0;
-						const int maxAirplanes = 8; // Reduced for fast mode
-						const double maxAirShadowDistance = 2500.0; // Moderate range
+						const int maxAirplanes = 16; // Increased for better coverage
+						const double maxAirShadowDistance = 25000.0; // 10x increased range
 						
 						airSeeker=NULL;
 						while((airSeeker=FindNextAirplane(airSeeker))!=NULL && airplaneCount < maxAirplanes)
@@ -6783,8 +6790,8 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 					// Render ground object shadows (buildings, etc.) for visual reference
 					FsGround *gndSeeker;
 					int groundCount = 0;
-					const int maxGroundObjects = 20; // Reasonable limit for buildings
-					const double maxSceneryShadowDistance = 5000.0; // Good range for buildings
+					const int maxGroundObjects = 40; // Increased for better coverage
+					const double maxSceneryShadowDistance = 50000.0; // 10x increased range
 
 					gndSeeker=NULL;
 					while((gndSeeker=FindNextGround(gndSeeker))!=NULL && groundCount < maxGroundObjects)
