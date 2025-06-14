@@ -20,7 +20,7 @@ void FsFlightConfig::SetDefault(void)
 	terminateUponPlayerCrash=YSTRUE;
 	horizonGradation=YSTRUE;
 	drawShadow=YSTRUE;
-	shadowMode=FSSHADOW_AUTO;
+	shadowMode=FSSHADOW_EXPERIMENTAL;
 	drawCloud=YSTRUE;
 	ceiling=4000.0;
 	cloudType=FSCLOUDSOLID;
@@ -40,7 +40,7 @@ void FsFlightConfig::SetDefault(void)
 	drawTransparency=YSTRUE;
 	drawTransparentVapor=YSTRUE;
 	drawTransparentSmoke=YSTRUE;
-	drawTransparentLater=YSTRUE;
+	drawTransparentLater=YSFALSE;
 
 	drawPlayerNameAlways=YSTRUE;
 	drawLightsInDaylight=YSTRUE;
@@ -96,6 +96,7 @@ void FsFlightConfig::SetDetailedMode(void)
 	smkRemainTime=60.0;
 	smkStep=1;
 	drawShadow=YSTRUE;
+	shadowMode=FSSHADOW_EXPERIMENTAL;
 	horizonGradation=YSTRUE;
 	drawCloud=YSTRUE;
 	cloudType=FSCLOUDSOLID;
@@ -104,7 +105,7 @@ void FsFlightConfig::SetDetailedMode(void)
 	drawTransparency=YSTRUE;
 	drawTransparentSmoke=YSTRUE;
 	drawTransparentVapor=YSTRUE;
-	drawTransparentLater=YSTRUE;
+	drawTransparentLater=YSFALSE;
 	drawFog=YSTRUE;
 	zbuffQuality=2;
 	airLod=0;

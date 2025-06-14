@@ -6625,22 +6625,99 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 		// Check if experimental shadow mode is enabled
 		if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL)
 		{
-			// Initialize experimental shadow renderer if not already done
-			FS_EXPERIMENTAL_SHADOW_INIT(*cfgPtr);
-			
-			// Use experimental shadow renderer
-			YsVec3 viewPos = actualViewMode.viewPoint;
-			YsVec3 viewDir = actualViewMode.viewAttitude.GetForwardVector();
-			YsVec3 lightDir = cfgPtr->lightSourceDirection;
-			
-			FsProjection prj;
-			GetProjection(prj,actualViewMode);
-			
-			// Use identity matrix temporarily for testing
-			YsMatrix4x4 projMatrix = YsIdentity4x4();
-			
-			FS_EXPERIMENTAL_SHADOW_RENDER(*cfgPtr, viewPos, viewDir, lightDir, world, 
-			                            actualViewMode.viewMat, projMatrix);
+			// Use the same accurate shadow matrix calculation as AUTO mode
+			// but with performance optimizations
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			// Use all shadow maps like AUTO mode for proper cascaded shadows
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
+			{
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
+				{
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					// MUST render field for correct scenery shadows
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					// Optimized airplane shadow rendering with moderate distance culling
+					FsAirplane *airSeeker;
+					int airplaneCount = 0;
+					const int maxAirplanes = 24; // Increased limit for better quality
+					const double maxAirShadowDistance = 5000.0; // Aircraft shadow range
+					
+					airSeeker=NULL;
+					while((airSeeker=FindNextAirplane(airSeeker))!=NULL && airplaneCount < maxAirplanes)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						
+						// Distance culling for performance
+						const YsVec3 &airPos = airSeeker->GetPosition();
+						double distance = (airPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxAirShadowDistance)
+						{
+							continue;
+						}
+
+						airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						
+						// Include ordinance shadows for first shadow map only (performance vs quality balance)
+						if(cfgPtr->drawOrdinance==YSTRUE && i==0)
+						{
+							airSeeker->Prop().DrawOrdinanceVisual(
+							    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						}
+						
+						airplaneCount++;
+					}
+
+					// Scenery object shadow rendering with generous culling to avoid pop-in
+					FsGround *gndSeeker;
+					int groundCount = 0;
+					const int maxGroundObjects = 48; // Much higher limit for scenery
+					const double maxSceneryShadowDistance = 12000.0; // Much larger range for scenery
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL && groundCount < maxGroundObjects)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+						
+						// Generous distance culling for scenery to avoid shadow pop-in
+						const YsVec3 &gndPos = gndSeeker->GetPosition();
+						double distance = (gndPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxSceneryShadowDistance)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						groundCount++;
+					}
+
+					FsEndRenderShadowMap();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
+				}
+			}
 		}
 		else if(cfgPtr->shadowMode == FSSHADOW_AUTO)
 		{

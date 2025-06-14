@@ -1,5 +1,6 @@
 #include "fsexperimentalshadow.h"
 #include <ysglmath.h>
+#include <ysviewcontrol.h>
 #include <cmath>
 #include <algorithm>
 #include <chrono>
@@ -449,34 +450,44 @@ void FsExperimentalShadowRenderer::EndShadowPass()
 
 void FsExperimentalShadowRenderer::UpdateLightMatrices(const YsVec3 &viewPos, const YsVec3 &viewDir)
 {
-    // Calculate light view matrix
-    YsVec3 lightPos = viewPos - lightDirection * (lightFar * 0.5);
-    YsVec3 lightTarget = viewPos;
-    YsVec3 up(0.0, 1.0, 0.0);
+    // Use the same light matrix calculation as AUTO mode for accuracy
+    const YsVec3 cameraEv = viewDir;
+    const YsVec3 cameraUv(0.0, 1.0, 0.0); // Simplified up vector
     
-    // If light direction is too close to up vector, use different up
-    if (fabs(lightDirection.y()) > 0.9) {
-        up.Set(1.0, 0.0, 0.0);
-    }
+    const YsVec3 lightEv = -YsUnitVector(lightDirection);
+    const double cameraEvSimilarity = fabs(lightEv * cameraEv);
+    const double cameraUvSimilarity = fabs(lightEv * cameraUv);
+    const YsVec3 lightUv = (cameraEvSimilarity < cameraUvSimilarity ? cameraEv : cameraUv);
     
-    YsVec3 right = lightDirection ^ up;
-    right.Normalize();
-    up = right ^ lightDirection;
-    up.Normalize();
+    YsAtt3 lightViewAtt;
+    lightViewAtt.SetTwoVector(lightEv, lightUv);
     
-    lightViewMatrix.Initialize();
-    lightViewMatrix.SetColumn(0, right);
-    lightViewMatrix.SetColumn(1, up);
-    lightViewMatrix.SetColumn(2, -lightDirection);
-    lightViewMatrix.SetColumn(3, lightPos);
-    lightViewMatrix.Invert();
+    // Calculate shadow parameters similar to AUTO mode
+    const double cosTheta = cameraEv * lightEv;
+    const double sinTheta = sqrt(1.0 - YsSmaller(1.0, cosTheta * cosTheta));
     
-    // Calculate orthographic projection matrix for directional light
-    GLfloat orthoMat[16];
-    YsGLMakeOrthographicfv(orthoMat, -lightOrthoSize, lightOrthoSize,
-                          -lightOrthoSize, lightOrthoSize,
-                          lightNear, lightFar);
-    lightProjectionMatrix.CreateFromOpenGlCompatibleMatrix(orthoMat);
+    const double baseDist = 200.0; // Default view target distance
+    const double lightVolumeProfile = baseDist;
+    const double lightDepthProfile = lightVolumeProfile * 30.0;
+    const double lightPullProfile = lightDepthProfile / 3.0;
+    
+    const YsVec3 push = cameraEv * lightVolumeProfile * sinTheta;
+    const YsVec3 lightOrigin = viewPos + push - lightEv * lightPullProfile;
+    
+    // Build light view matrix like AUTO mode
+    lightViewMatrix.LoadIdentity();
+    lightViewMatrix.RotateXY(-lightViewAtt.b());
+    lightViewMatrix.RotateZY(-lightViewAtt.p());
+    lightViewMatrix.RotateXZ(-lightViewAtt.h());
+    lightViewMatrix.Translate(-lightOrigin);
+    
+    // Use YsProjectionTransformation for consistent projection matrix
+    YsProjectionTransformation proj;
+    proj.SetProjectionMode(YsProjectionTransformation::ORTHOGONAL);
+    proj.SetAspectRatio(1.0);
+    proj.SetOrthogonalProjectionHeight(lightVolumeProfile * 2.0);
+    proj.SetNearFar(0.0, lightDepthProfile);
+    lightProjectionMatrix = proj.GetProjectionMatrix();
 }
 
 void FsExperimentalShadowRenderer::CullShadowCasters(const FsWorld *world, const YsVec3 &viewPos)
@@ -485,21 +496,19 @@ void FsExperimentalShadowRenderer::CullShadowCasters(const FsWorld *world, const
     
     if (!world) return;
     
-    // Placeholder implementation
-    // In the final version, this will be connected to the actual world object system
-    // when the integration is complete and we have access to the real FsWorld interface
+    // Since we can't directly access FsWorld objects yet, we'll create a minimal
+    // implementation that at least sets up the rendering pipeline correctly.
+    // The actual object iteration will be handled by the calling code.
     
-    // For now, we'll just create a few dummy jobs to test the system
-    for (int i = 0; i < 4 && i < MAX_SHADOW_CASTERS_PER_FRAME; ++i) {
-        FsShadowRenderJob job;
-        job.existence = nullptr; // Will be set when real objects are available
-        job.distance = 100.0 + (i * 50.0);
-        job.isVisible = true;
-        job.lightViewMatrix = lightViewMatrix;
-        job.lightProjectionMatrix = lightProjectionMatrix;
-        
-        renderJobs.push_back(job);
-    }
+    // Create a placeholder job to ensure the rendering pipeline works
+    FsShadowRenderJob job;
+    job.existence = nullptr;
+    job.distance = 0.0;
+    job.isVisible = true;
+    job.lightViewMatrix = lightViewMatrix;
+    job.lightProjectionMatrix = lightProjectionMatrix;
+    
+    renderJobs.push_back(job);
 }
 
 void FsExperimentalShadowRenderer::SortShadowCastersByDistance(const YsVec3 &viewPos)
@@ -542,18 +551,17 @@ void FsExperimentalShadowRenderer::CreateShadowBatches()
 
 void FsExperimentalShadowRenderer::RenderShadowMapSingleThreaded()
 {
-    glUseProgram(shadowGenShader);
+    // For now, we'll let the calling code handle the actual object rendering
+    // since it already has access to the proper DrawShadow methods.
+    // This ensures compatibility with the existing shadow rendering system.
     
-    GLint lightViewProjLoc = glGetUniformLocation(shadowGenShader, "lightViewProjectionMatrix");
-    GLint modelMatrixLoc = glGetUniformLocation(shadowGenShader, "modelMatrix");
+    // Set up OpenGL state for shadow map rendering
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
     
-    YsMatrix4x4 lightViewProjection = lightProjectionMatrix * lightViewMatrix;
-    
-    for (const auto &batch : shadowBatches) {
-        RenderShadowBatch(batch);
-    }
-    
-    glUseProgram(0);
+    // The actual object rendering will be handled by the integration layer
+    // which can call the proper object->DrawShadow() methods
 }
 
 void FsExperimentalShadowRenderer::RenderShadowMapMultiThreaded()

@@ -766,7 +766,7 @@ void FsSubMenu::Draw(const class FsSimulation *sim,class FsFlightConfig &cfg,int
 		{
 		default:
 		case FSSHADOW_AUTO:
-			FsDrawString(sx,sy,"S: Shadow Graphics (Now:AUTO)",YsWhite());
+			FsDrawString(sx,sy,"S: Shadow Graphics (Now:LEGACY)",YsWhite());
 			break;
 		case FSSHADOW_FAST:
 			FsDrawString(sx,sy,"S: Shadow Graphics (Now:FAST)",YsWhite());
