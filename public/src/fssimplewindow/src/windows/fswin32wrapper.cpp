@@ -1074,6 +1074,7 @@ static void InitializeOpenGL(HWND wnd)
 	glColor3ub(0,0,0);
 
 	// Disable VSync to unlock framerate - try multiple methods for compatibility
+	printf("DEBUG: InitializeOpenGL (Windows) - Attempting to disable VSync...\n");
 	bool vsyncDisabled = false;
 	
 	// Method 1: Try WGL_EXT_swap_control
@@ -1081,7 +1082,20 @@ static void InitializeOpenGL(HWND wnd)
 	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 	if(wglSwapIntervalEXT != NULL)
 	{
+		printf("DEBUG: Found wglSwapIntervalEXT in Windows wrapper, attempting to disable VSync...\n");
 		vsyncDisabled = wglSwapIntervalEXT(0);  // 0 = disable VSync
+		if(vsyncDisabled)
+		{
+			printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalEXT in Windows wrapper!\n");
+		}
+		else
+		{
+			printf("DEBUG: FAILED - wglSwapIntervalEXT(0) returned FALSE in Windows wrapper\n");
+		}
+	}
+	else
+	{
+		printf("DEBUG: wglSwapIntervalEXT not available in Windows wrapper\n");
 	}
 	
 	// Method 2: Try WGL_ARB_swap_control if EXT failed
@@ -1091,19 +1105,48 @@ static void InitializeOpenGL(HWND wnd)
 		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
 		if(wglSwapIntervalARB != NULL)
 		{
+			printf("DEBUG: Found wglSwapIntervalARB in Windows wrapper, attempting to disable VSync...\n");
 			vsyncDisabled = wglSwapIntervalARB(0);  // 0 = disable VSync
+			if(vsyncDisabled)
+			{
+				printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalARB in Windows wrapper!\n");
+			}
+			else
+			{
+				printf("DEBUG: FAILED - wglSwapIntervalARB(0) returned FALSE in Windows wrapper\n");
+			}
+		}
+		else
+		{
+			printf("DEBUG: wglSwapIntervalARB not available in Windows wrapper\n");
 		}
 	}
 	
 	// Method 3: Try forcing immediate mode for stubborn drivers
 	if(!vsyncDisabled)
 	{
+		printf("DEBUG: Trying adaptive vsync as fallback in Windows wrapper...\n");
 		// Some drivers respond better to negative values
 		if(wglSwapIntervalEXT != NULL)
 		{
-			wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+			BOOL result = wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+			if(result)
+			{
+				printf("DEBUG: Adaptive vsync enabled (immediate mode) in Windows wrapper\n");
+			}
+			else
+			{
+				printf("DEBUG: FAILED - Adaptive vsync also failed in Windows wrapper\n");
+			}
 		}
 	}
+	
+	if(!vsyncDisabled)
+	{
+		printf("DEBUG: WARNING - All VSync disable methods failed in Windows wrapper! Frame rate may be limited.\n");
+	}
+	
+	printf("DEBUG: VSync disable attempt completed in Windows wrapper\n");
 }
 
 int FsGetNumCurrentTouch(void)
