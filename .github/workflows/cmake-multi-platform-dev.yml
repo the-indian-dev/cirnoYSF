@@ -45,6 +45,7 @@ jobs:
         run: |
           echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
           echo "main-output-dir=${{ github.workspace }}/build/main" >> "$GITHUB_OUTPUT"
+          
       - name: Install development libraries (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -54,6 +55,7 @@ jobs:
             libglu1-mesa-dev \
             libasound2-dev \
             libpulse-dev
+            
       - name: Configure CMake (Linux)
         if: runner.os == 'Linux'
         working-directory: ${{ github.workspace }}
@@ -69,18 +71,22 @@ jobs:
             -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+            
       - name: Configure CMake with Optimizations (Windows)
         if: runner.os == 'Windows'
         working-directory: ${{ github.workspace }}
         shell: cmd # Using cmd for Windows
         run: |
-          echo "Configuring CMake for Windows (MSVC) with performance optimizations"
+          echo "Configuring CMake for Windows (MSVC) by adding optimizations to the default flags"
           
+          :: /DWIN32 /D_WINDOWS: The default defines that prevent Linux-specific headers from being included.
+          :: /EHsc: Standard C++ exception handling model.
+          :: --- Your Custom Optimization Flags ---
           :: /Ox: Full optimization, favoring speed.
           :: /fp:fast: Enables fast, less precise floating-point operations.
           :: /arch:AVX2: Use Advanced Vector Extensions 2 for modern CPUs.
           :: /GL: Enable Whole Program Optimization (requires /LTCG at link time).
-          set EXTRA_COMPILE_FLAGS=/Ox /fp:fast /arch:AVX2 /GL
+          set EXTRA_COMPILE_FLAGS=/DWIN32 /D_WINDOWS /EHsc /Ox /fp:fast /arch:AVX2 /GL
 
           :: /LTCG: Link-Time Code Generation to work with the compiler's /GL flag.
           :: opengl32.lib glu32.lib: Manually link required libraries.
@@ -96,11 +102,13 @@ jobs:
             -DCMAKE_CXX_FLAGS="%EXTRA_COMPILE_FLAGS%" ^
             -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
             -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
+            
       - name: Build
         run: >
           cmake --build ${{ steps.strings.outputs.build-output-dir }}
           --config ${{ matrix.build_type }}
           --parallel
+          
       - name: Copy icon
         if: success()
         shell: bash
@@ -116,6 +124,7 @@ jobs:
           else
             echo "Warning: Icon not found at $ICON_SOURCE_PATH (expected at ${{ github.workspace }}/$ICON_SOURCE_PATH). Skipping copy."
           fi
+          
       - name: Test
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --build-config ${{ matrix.build_type }} -V
