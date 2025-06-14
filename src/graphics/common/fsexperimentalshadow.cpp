@@ -564,6 +564,20 @@ void FsExperimentalShadowRenderer::RenderShadowMapSingleThreaded()
     // which can call the proper object->DrawShadow() methods
 }
 
+void FsExperimentalShadowRenderer::RenderExperimentalFastShadows(const YsVec3 &viewPos, const YsVec3 &viewDir,
+                                                                const YsVec3 &lightDir, const FsWorld *world,
+                                                                const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix,
+                                                                int viewMode, void *focusAir)
+{
+    // This is a placeholder implementation for EXPERIMENTAL_FAST mode
+    // The actual implementation would need access to the FsWorld objects
+    // and proper shadow map rendering, which should be done in the simulation layer
+    
+    // For now, this method exists to provide the interface
+    // The real implementation should be in the simulation code where
+    // it has access to the actual aircraft and ground objects
+}
+
 void FsExperimentalShadowRenderer::RenderShadowMapMultiThreaded()
 {
     // Reset job completion counter
@@ -911,5 +925,16 @@ void FsRenderExperimentalShadows(const YsVec3 &viewPos, const YsVec3 &viewDir,
     if (fsExperimentalShadowRenderer) {
         fsExperimentalShadowRenderer->BeginShadowPass(viewPos, viewDir, lightDir, world);
         fsExperimentalShadowRenderer->EndShadowPass();
+    }
+}
+
+void FsRenderExperimentalFastShadows(const YsVec3 &viewPos, const YsVec3 &viewDir,
+                                     const YsVec3 &lightDir, const FsWorld *world,
+                                     const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix,
+                                     int viewMode, void *focusAir)
+{
+    if (fsExperimentalShadowRenderer) {
+        fsExperimentalShadowRenderer->RenderExperimentalFastShadows(viewPos, viewDir, lightDir, world,
+                                                                   viewMatrix, projMatrix, viewMode, focusAir);
     }
 }

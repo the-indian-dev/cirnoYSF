@@ -171,6 +171,12 @@ public:
 	void EndShadowPass();
 	void RenderShadows(const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix);
 	
+	// Experimental fast mode interface
+	void RenderExperimentalFastShadows(const YsVec3 &viewPos, const YsVec3 &viewDir,
+	                                   const YsVec3 &lightDir, const FsWorld *world,
+	                                   const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix,
+	                                   int viewMode, void *focusAir);
+	
 	// Configuration
 	void SetShadowQuality(FSSHADOWQUALITY quality);
 	void SetSoftShadowsEnabled(bool enabled);
@@ -211,6 +217,10 @@ void FsCleanupExperimentalShadows();
 void FsRenderExperimentalShadows(const YsVec3 &viewPos, const YsVec3 &viewDir, 
                                 const YsVec3 &lightDir, const FsWorld *world,
                                 const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix);
+void FsRenderExperimentalFastShadows(const YsVec3 &viewPos, const YsVec3 &viewDir,
+                                     const YsVec3 &lightDir, const FsWorld *world,
+                                     const YsMatrix4x4 &viewMatrix, const YsMatrix4x4 &projMatrix,
+                                     int viewMode, void *focusAir);
 
 /* } */
 #endif

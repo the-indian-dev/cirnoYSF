@@ -6721,27 +6721,101 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 		}
 		else if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL_FAST)
 		{
-			// EXPERIMENTAL_FAST mode: Use experimental shadow renderer with fast/ground-only settings
-			FS_EXPERIMENTAL_SHADOW_INIT(*cfgPtr);
-			
-			// Configure experimental renderer for fast mode
-			if(fsExperimentalShadowRenderer)
+			// EXPERIMENTAL_FAST mode: Fast shadows with ground objects, no cockpit shadows
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			// Use only first shadow map for maximum performance
+			for(int i=0; i<1 && i<commonTexture.GetMaxNumShadowMap(); ++i)
 			{
-				fsExperimentalShadowRenderer->SetShadowQuality(FSSHADOWQUALITY_LOW);
-				fsExperimentalShadowRenderer->SetMultithreadingEnabled(true);
-				fsExperimentalShadowRenderer->SetInstancingEnabled(true);
-				fsExperimentalShadowRenderer->SetSoftShadowsEnabled(false); // Disable for speed
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
+				{
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					// Render field for ground shadows (terrain shadows)
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					// EXPERIMENTAL_FAST: Only render airplane shadows that cast on ground
+					// Skip cockpit view shadows and instrument shadows
+					if(actualViewMode.actualViewMode != FSCOCKPITVIEW &&
+					   actualViewMode.actualViewMode != FSADDITIONALAIRPLANEVIEW &&
+					   actualViewMode.actualViewMode != FSADDITIONALAIRPLANEVIEW_CABIN)
+					{
+						FsAirplane *airSeeker;
+						int airplaneCount = 0;
+						const int maxAirplanes = 8; // Reduced for fast mode
+						const double maxAirShadowDistance = 2500.0; // Moderate range
+						
+						airSeeker=NULL;
+						while((airSeeker=FindNextAirplane(airSeeker))!=NULL && airplaneCount < maxAirplanes)
+						{
+							if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+							{
+								continue;
+							}
+							
+							// Distance culling for performance
+							const YsVec3 &airPos = airSeeker->GetPosition();
+							double distance = (airPos - actualViewMode.viewPoint).GetLength();
+							if(distance > maxAirShadowDistance)
+							{
+								continue;
+							}
+
+							// Only draw airplane shadow if it's not the player's cockpit view
+							if(airSeeker != focusAir || actualViewMode.actualViewMode != FSCOCKPITVIEW)
+							{
+								airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+							}
+							
+							airplaneCount++;
+						}
+					}
+
+					// Render ground object shadows (buildings, etc.) for visual reference
+					FsGround *gndSeeker;
+					int groundCount = 0;
+					const int maxGroundObjects = 20; // Reasonable limit for buildings
+					const double maxSceneryShadowDistance = 5000.0; // Good range for buildings
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL && groundCount < maxGroundObjects)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+						
+						// Distance culling for performance
+						const YsVec3 &gndPos = gndSeeker->GetPosition();
+						double distance = (gndPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxSceneryShadowDistance)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						groundCount++;
+					}
+
+					FsEndRenderShadowMap();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
+				}
 			}
-			
-			// Use experimental shadow renderer with multithreading
-			YsVec3 viewPos = actualViewMode.viewPoint;
-			YsVec3 viewDir = actualViewMode.viewAttitude.GetForwardVector();
-			YsVec3 lightDir = cfgPtr->lightSourceDirection;
-			
-			YsMatrix4x4 projMatrix = YsIdentity4x4();
-			
-			FS_EXPERIMENTAL_SHADOW_RENDER(*cfgPtr, viewPos, viewDir, lightDir, world, 
-			                            actualViewMode.viewMat, projMatrix);
 		}
 		else if(cfgPtr->shadowMode == FSSHADOW_AUTO)
 		{
