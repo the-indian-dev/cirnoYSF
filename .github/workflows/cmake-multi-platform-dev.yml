@@ -69,23 +69,33 @@ jobs:
             -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-      - name: Configure CMake (Windows)
+      - name: Configure CMake with Optimizations (Windows)
         if: runner.os == 'Windows'
         working-directory: ${{ github.workspace }}
         shell: cmd # Using cmd for Windows
         run: |
-          echo "Configuring CMake for Windows (MSVC)"
-          echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
-          set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
+          echo "Configuring CMake for Windows (MSVC) with performance optimizations"
+          
+          :: /Ox: Full optimization, favoring speed.
+          :: /fp:fast: Enables fast, less precise floating-point operations.
+          :: /arch:AVX2: Use Advanced Vector Extensions 2 for modern CPUs.
+          :: /GL: Enable Whole Program Optimization (requires /LTCG at link time).
+          set EXTRA_COMPILE_FLAGS=/Ox /fp:fast /arch:AVX2 /GL
+
+          :: /LTCG: Link-Time Code Generation to work with the compiler's /GL flag.
+          :: opengl32.lib glu32.lib: Manually link required libraries.
+          set EXTRA_LINK_FLAGS=/LTCG opengl32.lib glu32.lib
+          
           cmake -S src ^
             -B ${{ steps.strings.outputs.build-output-dir }} ^
             -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
             -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+            -DCMAKE_C_FLAGS="%EXTRA_COMPILE_FLAGS%" ^
+            -DCMAKE_CXX_FLAGS="%EXTRA_COMPILE_FLAGS%" ^
             -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
             -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
-            :: No -Wno-incompatible-pointer-types for MSVC by default.
       - name: Build
         run: >
           cmake --build ${{ steps.strings.outputs.build-output-dir }}
@@ -118,5 +128,3 @@ jobs:
           path: ${{ steps.strings.outputs.main-output-dir }}
           if-no-files-found: warn
           retention-days: 7
-
-
