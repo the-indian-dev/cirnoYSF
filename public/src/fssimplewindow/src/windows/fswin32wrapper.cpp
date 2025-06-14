@@ -1072,6 +1072,14 @@ static void InitializeOpenGL(HWND wnd)
 	glPointSize(1);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glColor3ub(0,0,0);
+
+	// Disable VSync to unlock framerate
+	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if(wglSwapIntervalEXT != NULL)
+	{
+		wglSwapIntervalEXT(0);  // 0 = disable VSync
+	}
 }
 
 int FsGetNumCurrentTouch(void)
