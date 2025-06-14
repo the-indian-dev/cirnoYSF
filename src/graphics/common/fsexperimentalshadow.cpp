@@ -620,7 +620,11 @@ double FsExperimentalShadowRenderer::CalculateObjectDistance(const void *obj, co
 
 void FsExperimentalShadowRenderer::InitializeThreadPool()
 {
-    int numThreads = std::min(4, (int)std::thread::hardware_concurrency());
+    unsigned int hwThreads = std::thread::hardware_concurrency();
+    int numThreads = (hwThreads > 0) ? static_cast<int>(hwThreads) : 2;
+    if (numThreads > 4) {
+        numThreads = 4;
+    }
     if (numThreads <= 1) {
         enableMultithreading = false;
         return;
