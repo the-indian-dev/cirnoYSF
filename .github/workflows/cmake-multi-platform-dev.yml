@@ -69,23 +69,28 @@ jobs:
             -DCMAKE_C_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+            
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
         working-directory: ${{ github.workspace }}
-        shell: cmd # Using cmd for Windows
+        shell: cmd
         run: |
-          echo "Configuring CMake for Windows (MSVC)"
+          echo "Configuring CMake for Windows (MSVC) with maximum speed optimizations"
           echo "Attempting to link with opengl32.lib and glu32.lib. For a permanent fix, update your CMakeLists.txt to find and link OpenGL."
           set EXTRA_LINK_FLAGS=opengl32.lib glu32.lib
+          set CFLAGS=/O2 /GL /Ot /Oi /fp:fast /arch:AVX2
+          set CXXFLAGS=/O2 /GL /Ot /Oi /fp:fast /arch:AVX2
           cmake -S src ^
             -B ${{ steps.strings.outputs.build-output-dir }} ^
-            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
             -DCMAKE_C_COMPILER=${{ matrix.c_compiler }} ^
+            -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }} ^
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ^
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
-            -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS%" ^
-            -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS%"
-            :: No -Wno-incompatible-pointer-types for MSVC by default.
+            -DCMAKE_C_FLAGS="%CFLAGS%" ^
+            -DCMAKE_CXX_FLAGS="%CXXFLAGS%" ^
+            -DCMAKE_EXE_LINKER_FLAGS="%EXTRA_LINK_FLAGS% /LTCG" ^
+            -DCMAKE_SHARED_LINKER_FLAGS="%EXTRA_LINK_FLAGS% /LTCG"
+
       - name: Build
         run: >
           cmake --build ${{ steps.strings.outputs.build-output-dir }}
