@@ -68,15 +68,6 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"glu32.lib")
 
-// Add Windows OpenGL extension declarations
-typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
-typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
-typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
-
-// Global variables to track OpenGL context changes in Windows wrapper
-static HGLRC g_win32LastKnownContext = NULL;
-static int g_win32ContextChangeCount = 0;
-
 static FsWin32KeyMapper fsKeyMapper;
 
 
@@ -1082,79 +1073,24 @@ static void InitializeOpenGL(HWND wnd)
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glColor3ub(0,0,0);
 
-	// Disable VSync to unlock framerate - aggressive approach with context tracking
-	printf("DEBUG: InitializeOpenGL (Windows) - Attempting aggressive VSync disable...\n");
+	// Disable VSync to unlock framerate - try multiple methods for compatibility
+	printf("DEBUG: InitializeOpenGL (Windows) - Attempting to disable VSync...\n");
+	bool vsyncDisabled = false;
 	
-	// Track OpenGL context changes
-	HGLRC hglrc = wglGetCurrentContext();
-	if(hglrc != NULL)
+	// Method 1: Try WGL_EXT_swap_control
+	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if(wglSwapIntervalEXT != NULL)
 	{
-		if(g_win32LastKnownContext != hglrc)
+		printf("DEBUG: Found wglSwapIntervalEXT in Windows wrapper, attempting to disable VSync...\n");
+		vsyncDisabled = wglSwapIntervalEXT(0);  // 0 = disable VSync
+		if(vsyncDisabled)
 		{
-			g_win32ContextChangeCount++;
-			printf("DEBUG: Windows wrapper - OpenGL context changed! Count: %d, Old: %p, New: %p\n", 
-				   g_win32ContextChangeCount, g_win32LastKnownContext, hglrc);
-			g_win32LastKnownContext = hglrc;
+			printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalEXT in Windows wrapper!\n");
 		}
 		else
 		{
-			printf("DEBUG: Same OpenGL context in Windows wrapper: %p\n", hglrc);
-		}
-	}
-	
-	bool vsyncDisabled = false;
-	
-	// Get function pointers
-	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-	PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
-	PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
-	
-	// Check current swap interval
-	if(wglGetSwapIntervalEXT != NULL)
-	{
-		int currentInterval = wglGetSwapIntervalEXT();
-		printf("DEBUG: Windows wrapper - Current swap interval: %d\n", currentInterval);
-	}
-	
-	// Method 1: Aggressive EXT approach with verification
-	if(wglSwapIntervalEXT != NULL)
-	{
-		printf("DEBUG: Found wglSwapIntervalEXT in Windows wrapper, attempting aggressive disable...\n");
-		
-		// Try multiple times to force compliance
-		for(int attempt = 0; attempt < 5; attempt++)
-		{
-			if(wglSwapIntervalEXT(0) == TRUE)
-			{
-				// Verify it actually worked
-				if(wglGetSwapIntervalEXT != NULL)
-				{
-					int verifyInterval = wglGetSwapIntervalEXT();
-					printf("DEBUG: Windows wrapper - Attempt %d, Verified interval: %d\n", 
-						   attempt + 1, verifyInterval);
-					if(verifyInterval == 0)
-					{
-						printf("DEBUG: SUCCESS - VSync disabled in Windows wrapper (verified)!\n");
-						vsyncDisabled = true;
-						break;
-					}
-					else
-					{
-						printf("DEBUG: Windows wrapper - Driver ignored vsync disable on attempt %d\n", attempt + 1);
-					}
-				}
-				else
-				{
-					printf("DEBUG: SUCCESS - VSync disabled in Windows wrapper (attempt %d)!\n", attempt + 1);
-					vsyncDisabled = true;
-					break;
-				}
-			}
-			else
-			{
-				printf("DEBUG: FAILED - wglSwapIntervalEXT(0) returned FALSE on attempt %d\n", attempt + 1);
-			}
-			Sleep(1);
+			printf("DEBUG: FAILED - wglSwapIntervalEXT(0) returned FALSE in Windows wrapper\n");
 		}
 	}
 	else
@@ -1162,34 +1098,55 @@ static void InitializeOpenGL(HWND wnd)
 		printf("DEBUG: wglSwapIntervalEXT not available in Windows wrapper\n");
 	}
 	
-	// Method 2: Try ARB if EXT failed
-	if(!vsyncDisabled && wglSwapIntervalARB != NULL)
+	// Method 2: Try WGL_ARB_swap_control if EXT failed
+	if(!vsyncDisabled)
 	{
-		printf("DEBUG: Trying wglSwapIntervalARB in Windows wrapper...\n");
-		for(int attempt = 0; attempt < 3; attempt++)
+		typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		if(wglSwapIntervalARB != NULL)
 		{
-			if(wglSwapIntervalARB(0) == TRUE)
+			printf("DEBUG: Found wglSwapIntervalARB in Windows wrapper, attempting to disable VSync...\n");
+			vsyncDisabled = wglSwapIntervalARB(0);  // 0 = disable VSync
+			if(vsyncDisabled)
 			{
-				printf("DEBUG: SUCCESS - VSync disabled using ARB in Windows wrapper (attempt %d)!\n", attempt + 1);
-				vsyncDisabled = true;
-				break;
+				printf("DEBUG: SUCCESS - VSync disabled using wglSwapIntervalARB in Windows wrapper!\n");
 			}
-			Sleep(1);
+			else
+			{
+				printf("DEBUG: FAILED - wglSwapIntervalARB(0) returned FALSE in Windows wrapper\n");
+			}
 		}
-	}
-	
-	// Final verification
-	if(wglGetSwapIntervalEXT != NULL)
-	{
-		int finalInterval = wglGetSwapIntervalEXT();
-		printf("DEBUG: Windows wrapper - Final swap interval: %d\n", finalInterval);
-		if(finalInterval != 0)
+		else
 		{
-			printf("DEBUG: WARNING - Windows wrapper VSync still enabled! Driver may be overriding.\n");
+			printf("DEBUG: wglSwapIntervalARB not available in Windows wrapper\n");
 		}
 	}
 	
-	printf("DEBUG: Windows wrapper VSync disable completed. Context changes: %d\n", g_win32ContextChangeCount);
+	// Method 3: Try forcing immediate mode for stubborn drivers
+	if(!vsyncDisabled)
+	{
+		printf("DEBUG: Trying adaptive vsync as fallback in Windows wrapper...\n");
+		// Some drivers respond better to negative values
+		if(wglSwapIntervalEXT != NULL)
+		{
+			BOOL result = wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+			if(result)
+			{
+				printf("DEBUG: Adaptive vsync enabled (immediate mode) in Windows wrapper\n");
+			}
+			else
+			{
+				printf("DEBUG: FAILED - Adaptive vsync also failed in Windows wrapper\n");
+			}
+		}
+	}
+	
+	if(!vsyncDisabled)
+	{
+		printf("DEBUG: WARNING - All VSync disable methods failed in Windows wrapper! Frame rate may be limited.\n");
+	}
+	
+	printf("DEBUG: VSync disable attempt completed in Windows wrapper\n");
 }
 
 int FsGetNumCurrentTouch(void)

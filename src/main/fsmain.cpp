@@ -28,74 +28,6 @@
 
 #include "fs.h"
 
-#ifdef _WIN32
-// Global variables for OpenGL context monitoring
-static HGLRC g_mainLoopLastKnownContext = NULL;
-static int g_mainLoopContextCheckCount = 0;
-static int g_vsyncReapplyCount = 0;
-
-// Function to check and reapply vsync settings if context changed
-void CheckAndReapplyVsync()
-{
-	HGLRC currentContext = wglGetCurrentContext();
-	if(currentContext != g_mainLoopLastKnownContext)
-	{
-		printf("DEBUG: MAIN LOOP - OpenGL context changed! Old: %p, New: %p (Check #%d)\n", 
-			   g_mainLoopLastKnownContext, currentContext, ++g_mainLoopContextCheckCount);
-		
-		if(currentContext != NULL)
-		{
-			g_vsyncReapplyCount++;
-			printf("DEBUG: MAIN LOOP - Attempting to reapply VSync disable (attempt #%d)...\n", g_vsyncReapplyCount);
-			
-			// Reapply vsync disable
-			typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
-			typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
-			
-			PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
-			PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
-			
-			if(wglGetSwapIntervalEXT != NULL)
-			{
-				int currentInterval = wglGetSwapIntervalEXT();
-				printf("DEBUG: MAIN LOOP - Current swap interval in new context: %d\n", currentInterval);
-			}
-			
-			if(wglSwapIntervalEXT != NULL)
-			{
-				for(int attempt = 0; attempt < 3; attempt++)
-				{
-					if(wglSwapIntervalEXT(0) == TRUE)
-					{
-						if(wglGetSwapIntervalEXT != NULL)
-						{
-							int verifyInterval = wglGetSwapIntervalEXT();
-							if(verifyInterval == 0)
-							{
-								printf("DEBUG: MAIN LOOP - SUCCESS reapplied VSync disable! (attempt %d)\n", attempt + 1);
-								break;
-							}
-							else
-							{
-								printf("DEBUG: MAIN LOOP - VSync reapply failed, interval still: %d\n", verifyInterval);
-							}
-						}
-						else
-						{
-							printf("DEBUG: MAIN LOOP - VSync reapply appeared successful (attempt %d)\n", attempt + 1);
-							break;
-						}
-					}
-					Sleep(1);
-				}
-			}
-		}
-		
-		g_mainLoopLastKnownContext = currentContext;
-	}
-}
-#endif
-
 // Progress callback functions
 static void ProgressCallbackFunction(int current, int total, const wchar_t *description)
 {
@@ -343,16 +275,6 @@ FsLazyWindowApplication::FsLazyWindowApplication()
 	}
 	else
 	{
-#ifdef _WIN32
-		// Periodically check for OpenGL context changes and reapply vsync settings
-		static int contextCheckCounter = 0;
-		if(++contextCheckCounter >= 60) // Check every ~60 frames
-		{
-			CheckAndReapplyVsync();
-			contextCheckCounter = 0;
-		}
-#endif
-		
 		testScript.RunOneStep();
 		if(YSTRUE!=runLoopPtr->RunOneStep())
 		{
@@ -1050,16 +972,8 @@ YSBOOL FsLazyWindowApplication::StepByStepInitialization(void)
 	return YSFALSE;
 }
 
-void FsLazyWindowApplication::ContextLostAndRecreated(void)
+/* virtual */ void FsLazyWindowApplication::ContextLostAndRecreated(void)
 {
-	printf("DEBUG: ContextLostAndRecreated() called - OpenGL context was lost and recreated!\n");
-	
-#ifdef _WIN32
-	// Reset context tracking since we know the context changed
-	g_mainLoopLastKnownContext = NULL;
-	printf("DEBUG: Reset context tracking due to ContextLostAndRecreated\n");
-#endif
-
 	FsReinitializeOpenGL();
 
 	auto &bufMan=YsGLBufferManager::GetSharedBufferManager();
@@ -1067,7 +981,6 @@ void FsLazyWindowApplication::ContextLostAndRecreated(void)
 
 	auto &commonTex=FsCommonTexture::GetCommonTexture();
 	commonTex.GetTextureManager().ContextLost();
-	printf("DEBUG: ContextLostAndRecreated() completed\n");
 }
 
 

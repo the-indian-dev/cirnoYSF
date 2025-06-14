@@ -1343,9 +1343,6 @@ void FsRunLoop::AfterDemoAction(void)
 
 void FsRunLoop::ChangeRunMode(RUNMODE runMode)
 {
-	printf("DEBUG: ChangeRunMode called - switching from %s to %s\n", 
-		   RunModeToString(GetCurrentRunMode()), RunModeToString(runMode));
-	
 	FsDisableIME();  // Just in case.
 
 	if(0==runModeStack.GetN())
