@@ -96,6 +96,7 @@ static LRESULT WINAPI WindowFunc(HWND wnd,UINT msg,WPARAM wp,LPARAM lp);
 static void YsSetPixelFormat(HDC dc);
 static HPALETTE YsCreatePalette(HDC dc);
 static void InitializeOpenGL(HWND wnd);
+static void DisableVSync(void);
 
 
 ////////////////////////////////////////////////////////////
@@ -557,6 +558,10 @@ int FsGetMouseEvent(int &lb,int &mb,int &rb,int &mx,int &my)
 
 void FsSwapBuffers(void)
 {
+	static int frameCount = 0;
+	static long long lastTime = 0;
+	static int debugCounter = 0;
+	
 	if(NULL!=fsSwapBuffersHook && true==(*fsSwapBuffersHook)(fsSwapBuffersHookParam))
 	{
 		return;
@@ -568,6 +573,35 @@ void FsSwapBuffers(void)
 		MessageBoxA(fsWin32Internal.hWnd,"Error! FsSwapBuffers used in the single-buffered mode.","Error!",MB_OK);
 		exit(1);
 	}
+
+	// Add timing debug for vsync detection
+	long long currentTime = FsSubSecondTimer();
+	if(lastTime != 0)
+	{
+		long long deltaTime = currentTime - lastTime;
+		frameCount++;
+		
+		// Print debug info every 60 frames
+		if(frameCount % 60 == 0)
+		{
+			double fps = 60.0 / (deltaTime / 1000.0);
+			printf("[VSYNC DEBUG] Frame %d: Delta=%.2fms, FPS=%.1f\n", frameCount, deltaTime/60.0, fps);
+			
+			// Check swap interval periodically
+			debugCounter++;
+			if(debugCounter % 5 == 0) // Every 300 frames
+			{
+				typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
+				PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+				if(wglGetSwapIntervalEXT != NULL)
+				{
+					int interval = wglGetSwapIntervalEXT();
+					printf("[VSYNC DEBUG] Current swap interval during SwapBuffers: %d\n", interval);
+				}
+			}
+		}
+	}
+	lastTime = currentTime;
 
 	HDC hDC;
 	glFlush();
@@ -635,6 +669,8 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 		YsSetPixelFormat(fsWin32Internal.hDC);
 		fsWin32Internal.hRC=wglCreateContext(fsWin32Internal.hDC);
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		printf("[VSYNC DEBUG] Context created during WM_CREATE\n");
+		DisableVSync();  // Disable VSync immediately after context creation
 		if(0==doubleBuffer)
 		{
 			glDrawBuffer(GL_FRONT);
@@ -660,9 +696,13 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 			(*fsOnResizeCallBack)(fsOnResizeCallBackParam,wid,hei);
 		}
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		printf("[VSYNC DEBUG] Context switched during WM_SIZE (window resize)\n");
+		DisableVSync();  // Re-disable VSync after context switch
 		break;
 	case WM_PAINT:
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		printf("[VSYNC DEBUG] Context switched during WM_PAINT (window repaint)\n");
+		DisableVSync();  // Re-disable VSync after context switch
 		exposure=1;
 		if(NULL!=fsOnPaintCallback)
 		{
@@ -1074,12 +1114,114 @@ static void InitializeOpenGL(HWND wnd)
 	glColor3ub(0,0,0);
 
 	// Disable VSync to unlock framerate
+	printf("[VSYNC DEBUG] InitializeOpenGL() called\n");
+	DisableVSync();
+}
+
+static void DisableVSync(void)
+{
+	printf("[VSYNC DEBUG] DisableVSync() called\n");
+	
+	// Check current swap interval first
+	typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
+	PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int currentInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Current swap interval: %d\n", currentInterval);
+	}
+	
+	// Disable VSync to unlock framerate - try multiple methods for compatibility
+	bool vsyncDisabled = false;
+	
+	// Method 1: Try WGL_EXT_swap_control
 	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
 	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 	if(wglSwapIntervalEXT != NULL)
 	{
-		wglSwapIntervalEXT(0);  // 0 = disable VSync
+		printf("[VSYNC DEBUG] Attempting WGL_EXT_swap_control method\n");
+		vsyncDisabled = wglSwapIntervalEXT(0);  // 0 = disable VSync
+		if(vsyncDisabled)
+		{
+			printf("[VSYNC DEBUG] WGL_EXT_swap_control SUCCESS - VSync disabled\n");
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WGL_EXT_swap_control FAILED\n");
+		}
 	}
+	else
+	{
+		printf("[VSYNC DEBUG] WGL_EXT_swap_control not available\n");
+	}
+	
+	// Method 2: Try WGL_ARB_swap_control if EXT failed
+	if(!vsyncDisabled)
+	{
+		typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		if(wglSwapIntervalARB != NULL)
+		{
+			printf("[VSYNC DEBUG] Attempting WGL_ARB_swap_control method\n");
+			vsyncDisabled = wglSwapIntervalARB(0);  // 0 = disable VSync
+			if(vsyncDisabled)
+			{
+				printf("[VSYNC DEBUG] WGL_ARB_swap_control SUCCESS - VSync disabled\n");
+			}
+			else
+			{
+				printf("[VSYNC DEBUG] WGL_ARB_swap_control FAILED\n");
+			}
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WGL_ARB_swap_control not available\n");
+		}
+	}
+	
+	// Method 3: Try forcing immediate mode for stubborn drivers
+	if(!vsyncDisabled)
+	{
+		printf("[VSYNC DEBUG] Attempting adaptive vsync method\n");
+		// Some drivers respond better to negative values
+		if(wglSwapIntervalEXT != NULL)
+		{
+			BOOL result = wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+			if(result)
+			{
+				printf("[VSYNC DEBUG] Adaptive vsync SUCCESS\n");
+			}
+			else
+			{
+				printf("[VSYNC DEBUG] Adaptive vsync FAILED\n");
+			}
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] Cannot attempt adaptive vsync - no WGL_EXT_swap_control\n");
+		}
+	}
+	
+	// Verify final state
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int finalInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Final swap interval: %d\n", finalInterval);
+		if(finalInterval == 0)
+		{
+			printf("[VSYNC DEBUG] VSync successfully disabled!\n");
+		}
+		else if(finalInterval == -1)
+		{
+			printf("[VSYNC DEBUG] Adaptive VSync enabled (should still allow high FPS)\n");
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WARNING: VSync still enabled (interval=%d)\n", finalInterval);
+		}
+	}
+	
+	printf("[VSYNC DEBUG] DisableVSync() completed\n");
 }
 
 int FsGetNumCurrentTouch(void)

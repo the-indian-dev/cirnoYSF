@@ -205,6 +205,51 @@ void FsWin32InitOpenGL(HWND wnd)
 	int depthBits;
 	glGetIntegerv(GL_DEPTH_BITS,&depthBits);
 	printf("Bit Depth=%d\n",depthBits);
+
+	// Disable VSync to unlock framerate - platform-specific initialization
+	printf("[VSYNC DEBUG] FsWin32InitOpenGL() called - disabling VSync\n");
+	
+	// Check current swap interval first
+	typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
+	PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int currentInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Platform - Current swap interval: %d\n", currentInterval);
+	}
+	
+	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if(wglSwapIntervalEXT != NULL)
+	{
+		printf("[VSYNC DEBUG] Platform - Attempting WGL_EXT_swap_control\n");
+		BOOL result = wglSwapIntervalEXT(0);  // 0 = disable VSync
+		printf("[VSYNC DEBUG] Platform - WGL_EXT_swap_control result: %s\n", result ? "SUCCESS" : "FAILED");
+	}
+	else
+	{
+		printf("[VSYNC DEBUG] Platform - WGL_EXT_swap_control not available, trying ARB\n");
+		// Try ARB variant if EXT is not available
+		typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		if(wglSwapIntervalARB != NULL)
+		{
+			printf("[VSYNC DEBUG] Platform - Attempting WGL_ARB_swap_control\n");
+			BOOL result = wglSwapIntervalARB(0);  // 0 = disable VSync
+			printf("[VSYNC DEBUG] Platform - WGL_ARB_swap_control result: %s\n", result ? "SUCCESS" : "FAILED");
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] Platform - WGL_ARB_swap_control also not available\n");
+		}
+	}
+	
+	// Verify final state
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int finalInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Platform - Final swap interval: %d\n", finalInterval);
+	}
 }
 
 void FsWin32HidePartOfScreenForSharewareMessage(void)
