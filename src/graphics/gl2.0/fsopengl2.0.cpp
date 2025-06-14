@@ -207,6 +207,40 @@ void FsInitializeOpenGL(void)
 
 	YsBitmap bmp;
 
+#ifdef _WIN32
+	// Disable VSync to unlock framerate - try multiple methods for compatibility
+	bool vsyncDisabled = false;
+	
+	// Method 1: Try WGL_EXT_swap_control
+	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if(wglSwapIntervalEXT != NULL)
+	{
+		vsyncDisabled = wglSwapIntervalEXT(0);  // 0 = disable VSync
+	}
+	
+	// Method 2: Try WGL_ARB_swap_control if EXT failed
+	if(!vsyncDisabled)
+	{
+		typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		if(wglSwapIntervalARB != NULL)
+		{
+			vsyncDisabled = wglSwapIntervalARB(0);  // 0 = disable VSync
+		}
+	}
+	
+	// Method 3: Try forcing immediate mode for stubborn drivers
+	if(!vsyncDisabled)
+	{
+		// Some drivers respond better to negative values
+		if(wglSwapIntervalEXT != NULL)
+		{
+			wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+		}
+	}
+#endif
+
 	ysScnGlRwLightTex=~(unsigned int)0;
 	ysScnGlMapTex=~(unsigned int)0;
 
