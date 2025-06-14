@@ -23,10 +23,6 @@ extern GLuint fsFlashTex[];
 extern int fsNumCloudTex;
 extern GLuint fsCloudTex[];
 
-// VSync control functions
-#ifdef _WIN32
-void FsDisableVSyncWindows(void);
-#endif
 
 
 // In fswirefontgl2.0.cpp >>
