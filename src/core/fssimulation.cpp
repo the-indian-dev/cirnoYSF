@@ -12599,22 +12599,30 @@ double FsSimulation::PassedTime(void)  // <- This function must wait at least 0.
 	}
 	double passed=(double)(clk-lastTime)/1000.0;
 
-    // Target minimum time per step is now 0.005 seconds (for 200 Hz)
-	if(passed<0.0005) // MODIFIED
+    // Minimum time step for stability (reduced for higher FPS while maintaining stability)
+	if(passed<0.0002) // Allow up to ~5000 FPS theoretical limit
 	{
-		// FsSleep(5) sleeps for 5ms (0.005s).
-        // If the target is 0.005s, and we've passed less,
-        // this sleep will likely bring us very close to or past the target.
-        // If target was less than 0.005s, we might need to adjust FsSleep's argument too.
-        // For 0.005s target, FsSleep(5) is fine, or even FsSleep(2) or FsSleep(1)
-        // followed by more precise spin-waiting. Let's keep FsSleep(5) for now,
-        // as it will try to yield for a duration that matches our new target.
-		FsSleep(1);
-	}
-	while(passed<0.0005 && lastTime<=clk) // MODIFIED
-	{
-		clk=FsSubSecondTimer();
-		passed=(double)(clk-lastTime)/1000.0;
+		// For very short waits, use busy waiting for precision
+		// Only use sleep for waits > 0.5ms to avoid frame rate limiting
+		if(passed<0.0005)
+		{
+			// Busy wait for sub-millisecond precision
+			while(passed<0.0002 && lastTime<=clk)
+			{
+				clk=FsSubSecondTimer();
+				passed=(double)(clk-lastTime)/1000.0;
+			}
+		}
+		else
+		{
+			// For longer waits, yield CPU briefly then busy wait
+			FsSleep(1);
+			while(passed<0.0002 && lastTime<=clk)
+			{
+				clk=FsSubSecondTimer();
+				passed=(double)(clk-lastTime)/1000.0;
+			}
+		}
 	}
 
 	if(clk<lastTime)  // Underflow took place.

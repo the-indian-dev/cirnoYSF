@@ -380,9 +380,69 @@ void FsPollDevice(void)
 
 void FsSleep(int ms)
 {
-	if(ms>0)
+	static int sleep_call_count = 0;
+	static long long int last_debug_time = 0;
+	
+	if(ms <= 0)
 	{
-		Sleep(ms);
+		return;
+	}
+	
+	// High-precision sleep for Windows
+	// Use QueryPerformanceCounter for sub-millisecond precision
+	static LARGE_INTEGER frequency = {0};
+	static int freq_initialized = 0;
+	
+	if(0 == freq_initialized)
+	{
+		QueryPerformanceFrequency(&frequency);
+		freq_initialized = 1;
+		printf("[SLEEP DEBUG] High-precision sleep initialized with frequency: %lld Hz\n", frequency.QuadPart);
+	}
+	
+	LARGE_INTEGER start, current;
+	QueryPerformanceCounter(&start);
+	
+	long long int target_ticks = (long long int)(ms * frequency.QuadPart) / 1000LL;
+	
+	// Debug output every 60 sleep calls
+	sleep_call_count++;
+	if(sleep_call_count % 60 == 0)
+	{
+		printf("[SLEEP DEBUG] FsSleep(%d) called %d times, using %s method\n", 
+			ms, sleep_call_count, (ms < 2) ? "busy-wait" : "hybrid");
+	}
+	
+	// For very short sleeps (< 2ms), use busy waiting for precision
+	if(ms < 2)
+	{
+		do {
+			QueryPerformanceCounter(&current);
+		} while((current.QuadPart - start.QuadPart) < target_ticks);
+	}
+	else
+	{
+		// For longer sleeps, use Sleep() for most of the time, then busy wait for precision
+		if(ms > 1)
+		{
+			Sleep(ms - 1);  // Sleep for most of the time
+		}
+		
+		// Busy wait for the remaining time for precision
+		do {
+			QueryPerformanceCounter(&current);
+		} while((current.QuadPart - start.QuadPart) < target_ticks);
+	}
+	
+	// Measure actual sleep duration for debugging
+	QueryPerformanceCounter(&current);
+	double actual_ms = (double)(current.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart;
+	
+	// Debug output for timing accuracy every 300 calls
+	if(sleep_call_count % 300 == 0)
+	{
+		printf("[SLEEP DEBUG] Requested: %dms, Actual: %.3fms, Error: %.3fms\n", 
+			ms, actual_ms, actual_ms - ms);
 	}
 }
 
