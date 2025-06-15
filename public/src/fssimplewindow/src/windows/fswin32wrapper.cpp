@@ -68,6 +68,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(lib,"gdi32.lib")
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"glu32.lib")
+#pragma comment(lib,"winmm.lib")
 
 static FsWin32KeyMapper fsKeyMapper;
 
@@ -409,14 +410,14 @@ long long int FsSubSecondTimer(void)
 	// Use QueryPerformanceCounter for high-resolution timing to prevent 64 FPS limitation
 	// This replaces GetTickCount() which has ~15.6ms resolution (64 Hz) on Windows
 	static LARGE_INTEGER frequency = {0};
-	static YSBOOL initialized = YSFALSE;
+	static int initialized = 0;
 	static long long int t0 = 0;
 	static int first = 1;
 	
-	if(YSFALSE == initialized)
+	if(0 == initialized)
 	{
 		QueryPerformanceFrequency(&frequency);
-		initialized = YSTRUE;
+		initialized = 1;
 		printf("[TIMER DEBUG] High-resolution timer initialized with frequency: %lld Hz\n", frequency.QuadPart);
 	}
 	
