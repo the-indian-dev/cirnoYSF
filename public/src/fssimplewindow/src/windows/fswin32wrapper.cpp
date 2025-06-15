@@ -55,6 +55,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <windows.h>
 #include <direct.h>
+#include <mmsystem.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
 
@@ -405,28 +406,41 @@ long long int FsPassedTime(void)
 
 long long int FsSubSecondTimer(void)
 {
-	// If I give up on Windows XP, I can use GetTickCount64.
-
-	long long int clk=GetTickCount();
-
-	static long long int lastValue=0;
-	static long long int base=0;
-
-	if(clk<lastValue) // Underflow.  49.7 days have passed.
+	// Use QueryPerformanceCounter for high-resolution timing to prevent 64 FPS limitation
+	// This replaces GetTickCount() which has ~15.6ms resolution (64 Hz) on Windows
+	static LARGE_INTEGER frequency = {0};
+	static YSBOOL initialized = YSFALSE;
+	static long long int t0 = 0;
+	static int first = 1;
+	
+	if(YSFALSE == initialized)
 	{
-		base+=0x100000000LL;
+		QueryPerformanceFrequency(&frequency);
+		initialized = YSTRUE;
+		printf("[TIMER DEBUG] High-resolution timer initialized with frequency: %lld Hz\n", frequency.QuadPart);
 	}
-	lastValue=clk;
-
-	static int first=1;
-	static long long int t0=0;
-	if(1==first)
+	
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+	
+	// Convert to milliseconds
+	long long int milliseconds = (counter.QuadPart * 1000LL) / frequency.QuadPart;
+	
+	if(1 == first)
 	{
-		t0=base+clk;
-		first=0;
+		t0 = milliseconds;
+		first = 0;
 	}
-
-	return base+clk-t0;
+	
+	return milliseconds - t0;
+	
+	/* Alternative C++11 std::chrono implementation (cross-platform):
+	#include <chrono>
+	static auto start_time = std::chrono::high_resolution_clock::now();
+	auto current_time = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time);
+	return duration.count();
+	*/
 }
 
 int FsInkey(void)
@@ -669,6 +683,10 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 		YsSetPixelFormat(fsWin32Internal.hDC);
 		fsWin32Internal.hRC=wglCreateContext(fsWin32Internal.hDC);
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		// Set high resolution timer for better frame timing
+		timeBeginPeriod(1);
+		printf("[TIMER DEBUG] Windows multimedia timer resolution set to 1ms\n");
+		
 		printf("[VSYNC DEBUG] Context created during WM_CREATE\n");
 		DisableVSync();  // Disable VSync immediately after context creation
 		if(0==doubleBuffer)
