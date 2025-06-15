@@ -111,7 +111,7 @@ inline const wchar_t *FsGetTextResource(const char *key,const wchar_t *alternati
 			L"version of the voting page.  But, if you can read Japanese, please click\n" \
 			L"on the following link and vote for YSFLIGHT.  Thank you!\n")
 
-#define FSGUI_ABOUTDLG_TITLE                              FsGetTextResource("aboutdlg/title",L"About YS FLIGHT SIMULATOR")
+#define FSGUI_ABOUTDLG_TITLE                              FsGetTextResource("aboutdlg/title",L"About CirnoYSF")
 #define FSGUI_ABOUTDLG_VERSION                            FsGetTextResource("aboutdlg/version",L"VERSION")
 
 #define FSGUI_AIRDLG_AIRCRAFTTAB                          FsGetTextResource("airdlg/aircrafttab",L"Aircraft")
@@ -624,7 +624,7 @@ inline const wchar_t *FsGetTextResource(const char *key,const wchar_t *alternati
 #define FSMENU_HELP_DEFKEYENGLISH                         FsGetTextResource("menu/help-DefKeyEnglish",L"Default Key Strokes and Controls - (N)")
 #define FSMENU_HELP_HELPJAPANESE                          FsGetTextResource("menu/help-HelpJapanese",L"Help - Japanese (J)")
 #define FSMENU_HELP_DEFKEYJAPANESE                        FsGetTextResource("menu/help-DefKeyJapanese",L"Default Key Strokes and Controls - Japanese (P)")
-#define FSMENU_HELP_ABOUT                                 FsGetTextResource("menu/help-About",L"About YSFLIGHT (A)")
+#define FSMENU_HELP_ABOUT                                 FsGetTextResource("menu/help-About",L"About CirnoYSF (A)")
 #define FSMENU_HELP_SUPPORTYSFLIGHT                       FsGetTextResource("menu/help-SupportYSFlight",L"Support YSFLIGHT Project")
 
 #define FSMENU_LEARNING                                   FsGetTextResource("menu/learning",L"Learning")

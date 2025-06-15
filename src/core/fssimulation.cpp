@@ -20,6 +20,7 @@
 #include "platform/common/fswindow.h"
 #include "graphics/common/fsopengl.h"
 #include "graphics/common/fsculling.h"
+#include "graphics/common/fsexperimentalshadowintegration.h"
 
 #include "fspluginmgr.h"
 #include "graphics/common/fsfontrenderer.h"
@@ -352,6 +353,9 @@ FsSimulation::~FsSimulation()
 	FsAirTrafficSequence::Delete(airTrafficSequence);
 
 	delete cfgPtr;
+
+	// Cleanup experimental shadow renderer
+	FS_EXPERIMENTAL_SHADOW_CLEANUP();
 
 #ifndef YS_SCSV
 	if(replayDlg!=NULL)
@@ -6618,68 +6622,275 @@ void FsSimulation::SimDrawShadowMap(const ActualViewMode &actualViewMode) const
 {
 	if(YSTRUE==FsIsShadowMapAvailable() && cfgPtr->drawShadow==YSTRUE)
 	{
-		auto &commonTexture=FsCommonTexture::GetCommonTexture();
-		commonTexture.ReadyShadowMap();
-
-		for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
+		// Check if experimental shadow mode is enabled
+		if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL)
 		{
-			auto texUnit=commonTexture.GetShadowMapTexture(i);
-			if(nullptr!=texUnit)
+			// Use the same accurate shadow matrix calculation as AUTO mode
+			// but with performance optimizations
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			// Use all shadow maps like AUTO mode for proper cascaded shadows
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
 			{
-				auto &projMat=actualViewMode.shadowProjMat[i];
-				auto &viewMat=actualViewMode.shadowViewMat[i];
-				auto texWid=texUnit->GetWidth();
-				auto texHei=texUnit->GetHeight();
-
-				texUnit->BindFrameBuffer();
-
-				FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
-
-				field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
-
-				FsAirplane *airSeeker;
-				YsVec3 pos;
-				airSeeker=NULL;
-				while((airSeeker=FindNextAirplane(airSeeker))!=NULL)
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
 				{
-					if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+					
+					// Force clear shadow map to prevent reusing cached shadows
+					glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					// MUST render field for correct scenery shadows
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					// Optimized airplane shadow rendering with moderate distance culling
+					FsAirplane *airSeeker;
+					int airplaneCount = 0;
+					const int maxAirplanes = 24; // Increased limit for better quality
+					const double maxAirShadowDistance = 5000.0; // Aircraft shadow range
+					
+					airSeeker=NULL;
+					while((airSeeker=FindNextAirplane(airSeeker))!=NULL && airplaneCount < maxAirplanes)
 					{
-						continue;
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						
+						// Distance culling for performance
+						const YsVec3 &airPos = airSeeker->GetPosition();
+						double distance = (airPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxAirShadowDistance)
+						{
+							continue;
+						}
+
+						airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						
+						// Include ordinance shadows for first shadow map only (performance vs quality balance)
+						if(cfgPtr->drawOrdinance==YSTRUE && i==0)
+						{
+							airSeeker->Prop().DrawOrdinanceVisual(
+							    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						}
+						
+						airplaneCount++;
 					}
 
-					airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
-					if(cfgPtr->drawOrdinance==YSTRUE)
+					// Scenery object shadow rendering with generous culling to avoid pop-in
+					FsGround *gndSeeker;
+					int groundCount = 0;
+					const int maxGroundObjects = 48; // Much higher limit for scenery
+					const double maxSceneryShadowDistance = 12000.0; // Much larger range for scenery
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL && groundCount < maxGroundObjects)
 					{
-						airSeeker->Prop().DrawOrdinanceVisual(
-						    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+						
+						// Generous distance culling for scenery to avoid shadow pop-in
+						const YsVec3 &gndPos = gndSeeker->GetPosition();
+						double distance = (gndPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxSceneryShadowDistance)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						groundCount++;
 					}
+
+					FsEndRenderShadowMap();
+					
+					// Ensure shadow map texture is properly updated and not cached
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+					glFlush();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
 				}
-
-				FsGround *gndSeeker;
-				FsProjection prj;
-				GetProjection(prj,actualViewMode);
-
-				gndSeeker=NULL;
-				while((gndSeeker=FindNextGround(gndSeeker))!=NULL)
-				{
-					if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
-					{
-						continue;
-					}
-					if(gndSeeker->Prop().NoShadow()==YSTRUE)
-					{
-						continue;
-					}
-
-					gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
-				}
-
-				FsEndRenderShadowMap();
-
-				texUnit->Bind(5+i);
-				FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
 			}
 		}
+		else if(cfgPtr->shadowMode == FSSHADOW_EXPERIMENTAL_FAST)
+		{
+			// EXPERIMENTAL_FAST mode: Fast shadows with ground objects, no cockpit shadows
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			// Use all shadow maps like working modes to prevent caching issues
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
+			{
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
+				{
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					// Render field for ground shadows (terrain shadows)
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					// EXPERIMENTAL_FAST: Only render airplane shadows that cast on ground
+					// Skip cockpit view shadows and instrument shadows
+					if(actualViewMode.actualViewMode != FSCOCKPITVIEW &&
+					   actualViewMode.actualViewMode != FSADDITIONALAIRPLANEVIEW &&
+					   actualViewMode.actualViewMode != FSADDITIONALAIRPLANEVIEW_CABIN)
+					{
+						FsAirplane *airSeeker;
+						int airplaneCount = 0;
+						const int maxAirplanes = 16; // Increased for better coverage
+						const double maxAirShadowDistance = 25000.0; // 10x increased range
+						
+						airSeeker=NULL;
+						while((airSeeker=FindNextAirplane(airSeeker))!=NULL && airplaneCount < maxAirplanes)
+						{
+							if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+							{
+								continue;
+							}
+							
+							// Distance culling for performance
+							const YsVec3 &airPos = airSeeker->GetPosition();
+							double distance = (airPos - actualViewMode.viewPoint).GetLength();
+							if(distance > maxAirShadowDistance)
+							{
+								continue;
+							}
+
+							// Only draw airplane shadow if it's not the player's cockpit view
+							if(airSeeker != focusAir || actualViewMode.actualViewMode != FSCOCKPITVIEW)
+							{
+								airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+							}
+							
+							airplaneCount++;
+						}
+					}
+
+					// Render ground object shadows (buildings, etc.) for visual reference
+					FsGround *gndSeeker;
+					int groundCount = 0;
+					const int maxGroundObjects = 40; // Increased for better coverage
+					const double maxSceneryShadowDistance = 50000.0; // 10x increased range
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL && groundCount < maxGroundObjects)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+						
+						// Distance culling for performance
+						const YsVec3 &gndPos = gndSeeker->GetPosition();
+						double distance = (gndPos - actualViewMode.viewPoint).GetLength();
+						if(distance > maxSceneryShadowDistance)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						groundCount++;
+					}
+
+					FsEndRenderShadowMap();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
+				}
+			}
+		}
+		else if(cfgPtr->shadowMode == FSSHADOW_AUTO)
+		{
+			// Use original shadow rendering system
+			auto &commonTexture=FsCommonTexture::GetCommonTexture();
+			commonTexture.ReadyShadowMap();
+
+			for(int i=0; i<commonTexture.GetMaxNumShadowMap(); ++i)
+			{
+				auto texUnit=commonTexture.GetShadowMapTexture(i);
+				if(nullptr!=texUnit)
+				{
+					auto &projMat=actualViewMode.shadowProjMat[i];
+					auto &viewMat=actualViewMode.shadowViewMat[i];
+					auto texWid=texUnit->GetWidth();
+					auto texHei=texUnit->GetHeight();
+
+					texUnit->BindFrameBuffer();
+
+					FsBeginRenderShadowMap(projMat,viewMat,texWid,texHei);
+
+					field.DrawVisual(viewMat,projMat,YSTRUE); // forShadowMap=YSTRUE
+
+					FsAirplane *airSeeker;
+					YsVec3 pos;
+					airSeeker=NULL;
+					while((airSeeker=FindNextAirplane(airSeeker))!=NULL)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && airSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+
+						airSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+						if(cfgPtr->drawOrdinance==YSTRUE)
+						{
+							airSeeker->Prop().DrawOrdinanceVisual(
+							    cfgPtr->drawCoarseOrdinance,airSeeker->weaponShapeOverrideStatic,viewMat,projMat,YsVisual::DRAWALL);
+						}
+					}
+
+					FsGround *gndSeeker;
+					FsProjection prj;
+					GetProjection(prj,actualViewMode);
+
+					gndSeeker=NULL;
+					while((gndSeeker=FindNextGround(gndSeeker))!=NULL)
+					{
+						if(cfgPtr->shadowOfDeadAirplane!=YSTRUE && gndSeeker->IsAlive()!=YSTRUE)
+						{
+							continue;
+						}
+						if(gndSeeker->Prop().NoShadow()==YSTRUE)
+						{
+							continue;
+						}
+
+						gndSeeker->DrawShadow(viewMat,projMat,YsIdentity4x4());
+					}
+
+					FsEndRenderShadowMap();
+
+					texUnit->Bind(5+i);
+					FsEnableShadowMap(actualViewMode.viewMat,projMat,viewMat,5+i,0+i);
+				}
+			}
+		}
+		// FSSHADOW_FAST mode: no shadows rendered
 	}
 }
 
@@ -7946,9 +8157,15 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 		}
 		else if(demoMode==YSTRUE)
 		{
-			FsDrawString(sx,sy,"Programmed By CaptainYS",YsWhite());
+			FsDrawString(sx,sy,"CirnoYSF - The ice-cold blazing-fast modern fork of YSFlight",YsWhite());
 			sy+=fsAsciiRenderer.GetFontHeight();
-			FsDrawString(sx,sy,"http://www.ysflight.com",YsWhite());
+			FsDrawString(sx,sy,"Fork of original YSFlight by Soji Yamakawa (CaptainYS)",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"Programmed by Ritabrata Das",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"https://cirnoysf.theindiandev.in/",YsWhite());
+			sy+=fsAsciiRenderer.GetFontHeight();
+			FsDrawString(sx,sy,"Licensed under BSD 3-Clause License",YsWhite());
 			sy+=fsAsciiRenderer.GetFontHeight();
 			sy+=fsAsciiRenderer.GetFontHeight();
 		}
@@ -12382,22 +12599,30 @@ double FsSimulation::PassedTime(void)  // <- This function must wait at least 0.
 	}
 	double passed=(double)(clk-lastTime)/1000.0;
 
-    // Target minimum time per step is now 0.005 seconds (for 200 Hz)
-	if(passed<0.0005) // MODIFIED
+    // Minimum time step for stability (reduced for higher FPS while maintaining stability)
+	if(passed<0.0002) // Allow up to ~5000 FPS theoretical limit
 	{
-		// FsSleep(5) sleeps for 5ms (0.005s).
-        // If the target is 0.005s, and we've passed less,
-        // this sleep will likely bring us very close to or past the target.
-        // If target was less than 0.005s, we might need to adjust FsSleep's argument too.
-        // For 0.005s target, FsSleep(5) is fine, or even FsSleep(2) or FsSleep(1)
-        // followed by more precise spin-waiting. Let's keep FsSleep(5) for now,
-        // as it will try to yield for a duration that matches our new target.
-		FsSleep(1);
-	}
-	while(passed<0.0005 && lastTime<=clk) // MODIFIED
-	{
-		clk=FsSubSecondTimer();
-		passed=(double)(clk-lastTime)/1000.0;
+		// For very short waits, use busy waiting for precision
+		// Only use sleep for waits > 0.5ms to avoid frame rate limiting
+		if(passed<0.0005)
+		{
+			// Busy wait for sub-millisecond precision
+			while(passed<0.0002 && lastTime<=clk)
+			{
+				clk=FsSubSecondTimer();
+				passed=(double)(clk-lastTime)/1000.0;
+			}
+		}
+		else
+		{
+			// For longer waits, yield CPU briefly then busy wait
+			FsSleep(1);
+			while(passed<0.0002 && lastTime<=clk)
+			{
+				clk=FsSubSecondTimer();
+				passed=(double)(clk-lastTime)/1000.0;
+			}
+		}
 	}
 
 	if(clk<lastTime)  // Underflow took place.

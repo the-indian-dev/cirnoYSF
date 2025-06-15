@@ -20,6 +20,7 @@ void FsFlightConfig::SetDefault(void)
 	terminateUponPlayerCrash=YSTRUE;
 	horizonGradation=YSTRUE;
 	drawShadow=YSTRUE;
+	shadowMode=FSSHADOW_EXPERIMENTAL_FAST;
 	drawCloud=YSTRUE;
 	ceiling=4000.0;
 	cloudType=FSCLOUDSOLID;
@@ -35,11 +36,11 @@ void FsFlightConfig::SetDefault(void)
 	showHudAlways=YSFALSE;
 	additionalCalibration=YSFALSE;
 	drawCoarseOrdinance=YSFALSE;
-	zbuffQuality=1;
+	zbuffQuality=0;
 	drawTransparency=YSTRUE;
 	drawTransparentVapor=YSTRUE;
 	drawTransparentSmoke=YSTRUE;
-	drawTransparentLater=YSTRUE;
+	drawTransparentLater=YSFALSE;
 
 	drawPlayerNameAlways=YSTRUE;
 	drawLightsInDaylight=YSTRUE;
@@ -95,6 +96,7 @@ void FsFlightConfig::SetDetailedMode(void)
 	smkRemainTime=60.0;
 	smkStep=1;
 	drawShadow=YSTRUE;
+	shadowMode=FSSHADOW_EXPERIMENTAL_FAST;
 	horizonGradation=YSTRUE;
 	drawCloud=YSTRUE;
 	cloudType=FSCLOUDSOLID;
@@ -103,7 +105,7 @@ void FsFlightConfig::SetDetailedMode(void)
 	drawTransparency=YSTRUE;
 	drawTransparentSmoke=YSTRUE;
 	drawTransparentVapor=YSTRUE;
-	drawTransparentLater=YSTRUE;
+	drawTransparentLater=YSFALSE;
 	drawFog=YSTRUE;
 	zbuffQuality=2;
 	airLod=0;
@@ -119,6 +121,7 @@ void FsFlightConfig::SetFastMode(void)
 	smkRemainTime=15.0;
 	smkStep=8;
 	drawShadow=YSFALSE;
+	shadowMode=FSSHADOW_FAST;
 	horizonGradation=YSFALSE;
 	drawCloud=YSFALSE;
 	drawOrdinance=YSFALSE;
@@ -222,6 +225,8 @@ const char *const FsFlightConfig::keyWordSource[]=
 	"PHONGSHAD",  // 2014/07/15
 
 	"RLDAYVISI",  // 2017/05/02
+
+	"SHADOWMOD",  // 2024/01/01 - Experimental shadow mode
 
 	NULL
 };
@@ -512,6 +517,13 @@ YSRESULT FsFlightConfig::SendCommand(const char cmd[])
 
 			case 61: // 	"RLDAYVISI",  // 2017/05/02
 				return FsGetLength(drawLightsInDaylightVisibilityThr,av[1]);
+
+			case 62: // 	"SHADOWMOD",  // 2024/01/01 - Experimental shadow mode
+				shadowMode=atoi(av[1]);
+				if(shadowMode < 0 || shadowMode > 3) shadowMode = FSSHADOW_AUTO;
+				// Update legacy drawShadow for compatibility
+				drawShadow = (shadowMode != FSSHADOW_FAST) ? YSTRUE : YSFALSE;
+				return YSOK;
 			}
 		}
 		else
@@ -575,6 +587,7 @@ YSRESULT FsFlightConfig::Save(const wchar_t fn[])
 		fprintf(fp,"SMOKESTEP %d\n",smkStep);
 
 		fprintf(fp,"DRWSHADOW %s\n",FsTrueFalseString(drawShadow));
+		fprintf(fp,"SHADOWMOD %d\n",shadowMode);
 		fprintf(fp,"HRIZNGRAD %s\n",FsTrueFalseString(horizonGradation));
 		fprintf(fp,"DRAWCLOUD %s\n",FsTrueFalseString(drawCloud));
 		switch(cloudType)

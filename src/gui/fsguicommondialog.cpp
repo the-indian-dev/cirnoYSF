@@ -104,21 +104,24 @@ void FsGuiAboutDialog::Make(void)
 	SetTextMessage(FSGUI_ABOUTDLG_TITLE);
 
 	AddStaticText(0,FSKEY_NULL,FsProgramTitle,32,1,YSTRUE);
+	AddStaticText(0,FSKEY_NULL,"The ice-cold blazing-fast modern fork of YSFlight",YSTRUE);
 
 	AddStaticText(0,FSKEY_NULL,FSGUI_ABOUTDLG_VERSION,YSTRUE);
 	YsString str;
 	str.Printf(" %d (Rev.%s)",YSFLIGHT_VERSION,YsSvnRevisionString);
 	AddStaticText(0,FSKEY_NULL,str,YSFALSE);
 
-	AddStaticText(0,FSKEY_NULL,"by Captain YS",YSTRUE);
+	AddStaticText(0,FSKEY_NULL,"Fork of original YSFlight by Soji Yamakawa (CaptainYS)",YSTRUE);
 	AddStaticText(0,FSKEY_NULL,L" (\u5c71\u5ddd\u6a5f\u9577)",YSFALSE);
-	AddStaticText(0,FSKEY_NULL,"Please visit YSFLIGHT.COM for more information",48,1,YSTRUE);
-	openURLBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"Open YSFLIGHT.COM",YSTRUE);
+	AddStaticText(0,FSKEY_NULL,"Programmed by Ritabrata Das",YSTRUE);
+	AddStaticText(0,FSKEY_NULL,"Licensed under BSD 3-Clause License",YSTRUE);
+	AddStaticText(0,FSKEY_NULL,"Please visit CirnoYSF website for more information",48,1,YSTRUE);
+	openURLBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"Open CirnoYSF Website",YSTRUE);
 	okBtn=AddTextButton(0,FSKEY_ENTER,FSGUI_PUSHBUTTON,FSGUI_COMMON_CLOSE,YSFALSE);
 
 	YsBitmap bmp;
 	bmp.LoadPng(FSGUI_ABOUTDLG_BANNER);
-	bannerBtn=AddBmpButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,bmp,L"YSFLIGHT.COM",YSTRUE);
+	bannerBtn=AddBmpButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,bmp,L"CirnoYSF Website",YSTRUE);
 
 	SetFocus(openURLBtn);
 
@@ -145,7 +148,7 @@ void FsGuiAboutDialog::OnButtonClick(FsGuiButton *btn)
 		}
 		else if(btn==openURLBtn || btn==bannerBtn)
 		{
-		    YsOpenURL("http://www.ysflight.com");
+		    YsOpenURL("https://cirnoysf.theindiandev.in");
 		}
 	}
 }
@@ -166,11 +169,11 @@ void FsGuiFirstDialogClass::Make(int nextActionCode)
 
 	AddStaticText(0,FSKEY_NULL,FSGUI_FIRSTDLG_2NDLINE,57,2,YSTRUE);
 
-	ysflightComBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"http://www.ysflight.com",YSTRUE);
+	ysflightComBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"https://cirnoysf.theindiandev.in",YSTRUE);
 
 	AddStaticText(0,FSKEY_NULL,FSGUI_FIRSTDLG_3RDLINE,60,2,YSTRUE);
 
-	downloadPageBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"http://download.en.ysflight.com",YSTRUE);
+	downloadPageBtn=AddTextButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,"https://github.com/the-indian-dev/cirnoYSF/",YSTRUE);
 
 	AddStaticText(0,FSKEY_NULL,FSGUI_FIRSTDLG_4THLINE,32,2,YSTRUE);
 
@@ -180,7 +183,7 @@ void FsGuiFirstDialogClass::Make(int nextActionCode)
 
 	YsBitmap bmp;
 	bmp.LoadPng(FSGUI_ABOUTDLG_BANNER);
-	bannerBtn=AddBmpButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,bmp,L"YSFLIGHT.COM",YSFALSE);
+	bannerBtn=AddBmpButton(0,FSKEY_NULL,FSGUI_PUSHBUTTON,bmp,L"CirnoYSF Website",YSFALSE);
 
 	SetFocus(ysflightComBtn);
 
@@ -198,18 +201,11 @@ void FsGuiFirstDialogClass::OnButtonClick(FsGuiButton *btn)
 		}
 		else if(btn==ysflightComBtn || btn==bannerBtn)
 		{
-		    YsOpenURL("http://www.ysflight.com");
+		    YsOpenURL("https://cirnoysf.theindiandev.in");
 		}
 		else if(btn==downloadPageBtn)
 		{
-			if(0==strcmp(FsOption::GetLanguageString(),FsJapaneseLanguageCode))
-			{
-				YsOpenURL("http://download.jp.ysflight.com");
-			}
-			else
-			{
-				YsOpenURL("http://download.en.ysflight.com");
-			}
+			YsOpenURL("https://github.com/the-indian-dev/cirnoYSF/");
 		}
 	}
 }

@@ -260,6 +260,8 @@ bool FsCloseWindowCallBack(void *)
 
 bool FsOpenGLContextCreationCallBack(void *)
 {
+	printf("[VSYNC DEBUG] FsOpenGLContextCreationCallBack called\n");
+	
 	/*
 	In YSFLIGHT on Direct 3D, graphics context creation is postponed until the window creation is
 	fully completed.  However, OpenGL context must not be created.  Therefore, FsWin32CreateGraphicContext must
@@ -272,7 +274,10 @@ bool FsOpenGLContextCreationCallBack(void *)
 
 	// hWndMain may be NULL at this point.
 
-	return FsWin32CreateGraphicContext(hWndMain,hDcMain);
+	bool result = FsWin32CreateGraphicContext(hWndMain,hDcMain);
+	printf("[VSYNC DEBUG] FsWin32CreateGraphicContext returned: %s\n", result ? "true" : "false");
+	
+	return result;
 	// Return true for D3D
 	// Return false for OpenGL and let FsSimpleWindow framework create OpenGL context
 }

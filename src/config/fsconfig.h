@@ -8,6 +8,14 @@
 
 #include "fsdef.h"
 
+// Shadow rendering modes
+enum FSSHADOWMODE
+{
+	FSSHADOW_FAST = 0,    // Fast/No shadows (original YSFALSE)
+	FSSHADOW_AUTO = 1,    // Auto/Basic shadows (original YSTRUE)
+	FSSHADOW_EXPERIMENTAL = 2,  // Experimental optimized shadows
+	FSSHADOW_EXPERIMENTAL_FAST = 3  // Experimental fast - ground shadows only
+};
 
 // Declaration /////////////////////////////////////////////
 class FsFlightConfig
@@ -28,7 +36,8 @@ public:
 	YSBOOL takeCrash;
 	YSBOOL terminateUponPlayerCrash;
 	YSBOOL horizonGradation;
-	YSBOOL drawShadow;
+	YSBOOL drawShadow;  // Keep for backward compatibility
+	int shadowMode;     // New shadow mode using FSSHADOWMODE enum
 	YSBOOL drawCloud;
 	double ceiling;
 	FSCLOUDTYPE cloudType;

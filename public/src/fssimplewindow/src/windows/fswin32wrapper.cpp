@@ -55,6 +55,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <windows.h>
 #include <direct.h>
+#include <mmsystem.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
 
@@ -67,6 +68,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma comment(lib,"gdi32.lib")
 #pragma comment(lib,"opengl32.lib")
 #pragma comment(lib,"glu32.lib")
+#pragma comment(lib,"winmm.lib")
 
 static FsWin32KeyMapper fsKeyMapper;
 
@@ -96,6 +98,7 @@ static LRESULT WINAPI WindowFunc(HWND wnd,UINT msg,WPARAM wp,LPARAM lp);
 static void YsSetPixelFormat(HDC dc);
 static HPALETTE YsCreatePalette(HDC dc);
 static void InitializeOpenGL(HWND wnd);
+static void DisableVSync(void);
 
 
 ////////////////////////////////////////////////////////////
@@ -377,9 +380,69 @@ void FsPollDevice(void)
 
 void FsSleep(int ms)
 {
-	if(ms>0)
+	static int sleep_call_count = 0;
+	static long long int last_debug_time = 0;
+	
+	if(ms <= 0)
 	{
-		Sleep(ms);
+		return;
+	}
+	
+	// High-precision sleep for Windows
+	// Use QueryPerformanceCounter for sub-millisecond precision
+	static LARGE_INTEGER frequency = {0};
+	static int freq_initialized = 0;
+	
+	if(0 == freq_initialized)
+	{
+		QueryPerformanceFrequency(&frequency);
+		freq_initialized = 1;
+		printf("[SLEEP DEBUG] High-precision sleep initialized with frequency: %lld Hz\n", frequency.QuadPart);
+	}
+	
+	LARGE_INTEGER start, current;
+	QueryPerformanceCounter(&start);
+	
+	long long int target_ticks = (long long int)(ms * frequency.QuadPart) / 1000LL;
+	
+	// Debug output every 60 sleep calls
+	sleep_call_count++;
+	if(sleep_call_count % 60 == 0)
+	{
+		printf("[SLEEP DEBUG] FsSleep(%d) called %d times, using %s method\n", 
+			ms, sleep_call_count, (ms < 2) ? "busy-wait" : "hybrid");
+	}
+	
+	// For very short sleeps (< 2ms), use busy waiting for precision
+	if(ms < 2)
+	{
+		do {
+			QueryPerformanceCounter(&current);
+		} while((current.QuadPart - start.QuadPart) < target_ticks);
+	}
+	else
+	{
+		// For longer sleeps, use Sleep() for most of the time, then busy wait for precision
+		if(ms > 1)
+		{
+			Sleep(ms - 1);  // Sleep for most of the time
+		}
+		
+		// Busy wait for the remaining time for precision
+		do {
+			QueryPerformanceCounter(&current);
+		} while((current.QuadPart - start.QuadPart) < target_ticks);
+	}
+	
+	// Measure actual sleep duration for debugging
+	QueryPerformanceCounter(&current);
+	double actual_ms = (double)(current.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart;
+	
+	// Debug output for timing accuracy every 300 calls
+	if(sleep_call_count % 300 == 0)
+	{
+		printf("[SLEEP DEBUG] Requested: %dms, Actual: %.3fms, Error: %.3fms\n", 
+			ms, actual_ms, actual_ms - ms);
 	}
 }
 
@@ -404,28 +467,41 @@ long long int FsPassedTime(void)
 
 long long int FsSubSecondTimer(void)
 {
-	// If I give up on Windows XP, I can use GetTickCount64.
-
-	long long int clk=GetTickCount();
-
-	static long long int lastValue=0;
-	static long long int base=0;
-
-	if(clk<lastValue) // Underflow.  49.7 days have passed.
+	// Use QueryPerformanceCounter for high-resolution timing to prevent 64 FPS limitation
+	// This replaces GetTickCount() which has ~15.6ms resolution (64 Hz) on Windows
+	static LARGE_INTEGER frequency = {0};
+	static int initialized = 0;
+	static long long int t0 = 0;
+	static int first = 1;
+	
+	if(0 == initialized)
 	{
-		base+=0x100000000LL;
+		QueryPerformanceFrequency(&frequency);
+		initialized = 1;
+		printf("[TIMER DEBUG] High-resolution timer initialized with frequency: %lld Hz\n", frequency.QuadPart);
 	}
-	lastValue=clk;
-
-	static int first=1;
-	static long long int t0=0;
-	if(1==first)
+	
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+	
+	// Convert to milliseconds
+	long long int milliseconds = (counter.QuadPart * 1000LL) / frequency.QuadPart;
+	
+	if(1 == first)
 	{
-		t0=base+clk;
-		first=0;
+		t0 = milliseconds;
+		first = 0;
 	}
-
-	return base+clk-t0;
+	
+	return milliseconds - t0;
+	
+	/* Alternative C++11 std::chrono implementation (cross-platform):
+	#include <chrono>
+	static auto start_time = std::chrono::high_resolution_clock::now();
+	auto current_time = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time);
+	return duration.count();
+	*/
 }
 
 int FsInkey(void)
@@ -557,6 +633,10 @@ int FsGetMouseEvent(int &lb,int &mb,int &rb,int &mx,int &my)
 
 void FsSwapBuffers(void)
 {
+	static int frameCount = 0;
+	static long long lastTime = 0;
+	static int debugCounter = 0;
+	
 	if(NULL!=fsSwapBuffersHook && true==(*fsSwapBuffersHook)(fsSwapBuffersHookParam))
 	{
 		return;
@@ -568,6 +648,35 @@ void FsSwapBuffers(void)
 		MessageBoxA(fsWin32Internal.hWnd,"Error! FsSwapBuffers used in the single-buffered mode.","Error!",MB_OK);
 		exit(1);
 	}
+
+	// Add timing debug for vsync detection
+	long long currentTime = FsSubSecondTimer();
+	if(lastTime != 0)
+	{
+		long long deltaTime = currentTime - lastTime;
+		frameCount++;
+		
+		// Print debug info every 60 frames
+		if(frameCount % 60 == 0)
+		{
+			double fps = 60.0 / (deltaTime / 1000.0);
+			printf("[VSYNC DEBUG] Frame %d: Delta=%.2fms, FPS=%.1f\n", frameCount, deltaTime/60.0, fps);
+			
+			// Check swap interval periodically
+			debugCounter++;
+			if(debugCounter % 5 == 0) // Every 300 frames
+			{
+				typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
+				PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+				if(wglGetSwapIntervalEXT != NULL)
+				{
+					int interval = wglGetSwapIntervalEXT();
+					printf("[VSYNC DEBUG] Current swap interval during SwapBuffers: %d\n", interval);
+				}
+			}
+		}
+	}
+	lastTime = currentTime;
 
 	HDC hDC;
 	glFlush();
@@ -635,6 +744,12 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 		YsSetPixelFormat(fsWin32Internal.hDC);
 		fsWin32Internal.hRC=wglCreateContext(fsWin32Internal.hDC);
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		// Set high resolution timer for better frame timing
+		timeBeginPeriod(1);
+		printf("[TIMER DEBUG] Windows multimedia timer resolution set to 1ms\n");
+		
+		printf("[VSYNC DEBUG] Context created during WM_CREATE\n");
+		DisableVSync();  // Disable VSync immediately after context creation
 		if(0==doubleBuffer)
 		{
 			glDrawBuffer(GL_FRONT);
@@ -660,9 +775,13 @@ static LRESULT WINAPI WindowFunc(HWND hWnd,UINT msg,WPARAM wp,LPARAM lp)
 			(*fsOnResizeCallBack)(fsOnResizeCallBackParam,wid,hei);
 		}
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		printf("[VSYNC DEBUG] Context switched during WM_SIZE (window resize)\n");
+		DisableVSync();  // Re-disable VSync after context switch
 		break;
 	case WM_PAINT:
 		wglMakeCurrent(fsWin32Internal.hDC,fsWin32Internal.hRC);
+		printf("[VSYNC DEBUG] Context switched during WM_PAINT (window repaint)\n");
+		DisableVSync();  // Re-disable VSync after context switch
 		exposure=1;
 		if(NULL!=fsOnPaintCallback)
 		{
@@ -1072,6 +1191,116 @@ static void InitializeOpenGL(HWND wnd)
 	glPointSize(1);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glColor3ub(0,0,0);
+
+	// Disable VSync to unlock framerate
+	printf("[VSYNC DEBUG] InitializeOpenGL() called\n");
+	DisableVSync();
+}
+
+static void DisableVSync(void)
+{
+	printf("[VSYNC DEBUG] DisableVSync() called\n");
+	
+	// Check current swap interval first
+	typedef int (WINAPI *PFNWGLGETSWAPINTERVALEXTPROC)(void);
+	PFNWGLGETSWAPINTERVALEXTPROC wglGetSwapIntervalEXT = (PFNWGLGETSWAPINTERVALEXTPROC)wglGetProcAddress("wglGetSwapIntervalEXT");
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int currentInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Current swap interval: %d\n", currentInterval);
+	}
+	
+	// Disable VSync to unlock framerate - try multiple methods for compatibility
+	bool vsyncDisabled = false;
+	
+	// Method 1: Try WGL_EXT_swap_control
+	typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int interval);
+	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+	if(wglSwapIntervalEXT != NULL)
+	{
+		printf("[VSYNC DEBUG] Attempting WGL_EXT_swap_control method\n");
+		vsyncDisabled = wglSwapIntervalEXT(0);  // 0 = disable VSync
+		if(vsyncDisabled)
+		{
+			printf("[VSYNC DEBUG] WGL_EXT_swap_control SUCCESS - VSync disabled\n");
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WGL_EXT_swap_control FAILED\n");
+		}
+	}
+	else
+	{
+		printf("[VSYNC DEBUG] WGL_EXT_swap_control not available\n");
+	}
+	
+	// Method 2: Try WGL_ARB_swap_control if EXT failed
+	if(!vsyncDisabled)
+	{
+		typedef BOOL (WINAPI *PFNWGLSWAPINTERVALARBPROC)(int interval);
+		PFNWGLSWAPINTERVALARBPROC wglSwapIntervalARB = (PFNWGLSWAPINTERVALARBPROC)wglGetProcAddress("wglSwapIntervalARB");
+		if(wglSwapIntervalARB != NULL)
+		{
+			printf("[VSYNC DEBUG] Attempting WGL_ARB_swap_control method\n");
+			vsyncDisabled = wglSwapIntervalARB(0);  // 0 = disable VSync
+			if(vsyncDisabled)
+			{
+				printf("[VSYNC DEBUG] WGL_ARB_swap_control SUCCESS - VSync disabled\n");
+			}
+			else
+			{
+				printf("[VSYNC DEBUG] WGL_ARB_swap_control FAILED\n");
+			}
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WGL_ARB_swap_control not available\n");
+		}
+	}
+	
+	// Method 3: Try forcing immediate mode for stubborn drivers
+	if(!vsyncDisabled)
+	{
+		printf("[VSYNC DEBUG] Attempting adaptive vsync method\n");
+		// Some drivers respond better to negative values
+		if(wglSwapIntervalEXT != NULL)
+		{
+			BOOL result = wglSwapIntervalEXT(-1);  // Adaptive vsync / immediate mode
+			if(result)
+			{
+				printf("[VSYNC DEBUG] Adaptive vsync SUCCESS\n");
+			}
+			else
+			{
+				printf("[VSYNC DEBUG] Adaptive vsync FAILED\n");
+			}
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] Cannot attempt adaptive vsync - no WGL_EXT_swap_control\n");
+		}
+	}
+	
+	// Verify final state
+	if(wglGetSwapIntervalEXT != NULL)
+	{
+		int finalInterval = wglGetSwapIntervalEXT();
+		printf("[VSYNC DEBUG] Final swap interval: %d\n", finalInterval);
+		if(finalInterval == 0)
+		{
+			printf("[VSYNC DEBUG] VSync successfully disabled!\n");
+		}
+		else if(finalInterval == -1)
+		{
+			printf("[VSYNC DEBUG] Adaptive VSync enabled (should still allow high FPS)\n");
+		}
+		else
+		{
+			printf("[VSYNC DEBUG] WARNING: VSync still enabled (interval=%d)\n", finalInterval);
+		}
+	}
+	
+	printf("[VSYNC DEBUG] DisableVSync() completed\n");
 }
 
 int FsGetNumCurrentTouch(void)

@@ -64,7 +64,7 @@ $BGCOL 0
 +common/no                                         #No
 +common/error                                      #エラー!
 
-+aboutdlg/title                                    #YS FLIGHT SIMULATORについて
++aboutdlg/title                                    #CirnoYSFについて
 +aboutdlg/version                                  #バージョン
 
 +menu/autodemo_acro_star_of_david                  #Star of David
@@ -562,7 +562,7 @@ $BGCOL 0
 +menu/help-DefKeyEnglish                           #英語デフォルトキー/ジョイスティック割り当て表
 +menu/help-HelpJapanese                            #日本語ヘルプ
 +menu/help-DefKeyJapanese                          #日本語デフォルトキー/ジョイスティック割り当て表
-+menu/help-About                                   #YSFLIGHTについて
++menu/help-About                                   #CirnoYSFについて
 +menu/help-SupportYSFlight                         #Support YSFLIGHT Project
 
 

@@ -76,7 +76,7 @@ void FsOption::SetDefault()
 {
 	scrnMode=0;
 	sound=YSTRUE;
-	openingDemo=YSTRUE;
+	openingDemo=YSFALSE;
 	rememberWindowSize=YSTRUE;
 	useTaskBarIcon=YSTRUE;
 	alwaysOnTop=YSFALSE;
