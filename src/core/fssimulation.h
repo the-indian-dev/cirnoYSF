@@ -82,9 +82,11 @@ public:
 
 class FsSimulation : public FsHasInFlightDialog
 {
+	// Forward declare as friend
+	friend class FsSimulationCalculationThread;
+	
 private:
 	YsString simTitle;
-
 	FsSimulation(const FsSimulation &);
 	FsSimulation &operator=(const FsSimulation &);
 
@@ -92,6 +94,8 @@ private:
 	FsAirTrafficSequence *airTrafficSequence=nullptr;;
 
 	mutable YsThreadPool threadPool;
+	
+	class FsSimulationCalculationThread* calcThread = nullptr;
 
 	YsArray <std::shared_ptr <FsSimExtensionBase> > addOnList;
 
@@ -407,7 +411,10 @@ public:
 public:
 	FsSimulation(class FsWorld *world);
 	~FsSimulation();
-
+	
+	// Initialize/cleanup calculation thread
+	void InitCalculationThread();
+	void CleanupCalculationThread();
 	static const char *ViewmodeToStr(FSVIEWMODE viewmode);
 	static FSVIEWMODE StrToViewmode(const char *str);
 
@@ -590,6 +597,15 @@ public:
 	    (const double &dt,
 	     YSBOOL demoMode,YSBOOL record,YSBOOL showTimer,YSBOOL networkStandby,FSUSERCONTROL userControl,
 	     YSBOOL showTimeMarker);
+	
+	// Multithreaded version that uses the simulation calculation thread
+	void SimulateOneStepThreaded
+	    (const double &dt,
+	     YSBOOL demoMode,YSBOOL record,YSBOOL showTimer,YSBOOL networkStandby,FSUSERCONTROL userControl,
+	     YSBOOL showTimeMarker);
+	     
+public: // Make this publicly accessible for the calculation thread
+	     
 	void DecideAllViewPoint(const double dt);
 	void AfterSimulation(void);
 
@@ -834,7 +850,11 @@ protected:
 
 	double PassedTime(void);
 
-	void SimMove(const double &deltaTime);
+	void SimMove(const double &dt);
+	void SimulateOneStepWithCoreThread(
+		const double &passedTime,
+		YSBOOL demoMode,YSBOOL record,YSBOOL showTimer,YSBOOL networkStandby,FSUSERCONTROL userControl,
+		YSBOOL showTimeMarker);
 	void SimCheckTailStrike(void);
 
 protected:

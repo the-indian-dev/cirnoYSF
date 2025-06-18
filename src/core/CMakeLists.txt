@@ -1,5 +1,8 @@
 set(TARGET_NAME ysflight_core)
-add_library(${TARGET_NAME} 
+
+# Find threading library
+find_package(Threads REQUIRED)
+add_library(${TARGET_NAME}
 	fsaibasic.cpp
 	fsatc.cpp
 	fsatcfileio.cpp
@@ -29,6 +32,8 @@ add_library(${TARGET_NAME}
 	fssimulation.cpp
 	fssimulationdemomode.cpp
 	fssimulationfileio.cpp
+	fssimulationcalcthread.cpp
+	fssimulationcalcthread_impl.cpp
 	fsstdout.cpp
 	fssubmenu.cpp
 	fsweapon.cpp
@@ -88,19 +93,20 @@ add_library(${TARGET_NAME}
 	fssimextension_intercept.h
 	fssimextension_closeairsupport.h
 	fssimextension_groundtoair.h
+	fssimulationcalcthread.h
 )
 target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${TARGET_NAME} 
+target_link_libraries(${TARGET_NAME}
 	geblkernel
 	geblgl
 	ysflight_common
 	ysflight_config
 	ysflight_platform_common
-	ysflight_pathplanning 
-	ysflight_externalconsole 
-	ysflight_autopilot 
+	ysflight_pathplanning
+	ysflight_externalconsole
+	ysflight_autopilot
 	ysflight_dynamics
-	ysflight_vehicle 
+	ysflight_vehicle
 	ysflight_util
 	yssocket
 	ysflight_graphics_common
@@ -116,4 +122,5 @@ target_link_libraries(${TARGET_NAME}
 	ysclass
 	ysclass11
 	ysglcpp
+	Threads::Threads
 )
