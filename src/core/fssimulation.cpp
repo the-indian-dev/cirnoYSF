@@ -2531,8 +2531,21 @@ void FsSimulation::SimulateOneStep(
 		printf("S0\n");
 	#endif
 
-	// Use threaded simulation if calculation thread is available
-	if (calcThread != nullptr)
+	// Process user input first in the main thread to ensure responsiveness
+	if (demoMode!=YSTRUE && networkStandby!=YSTRUE && userControl!=FSUSC_DISABLE)
+	{
+		SimControlByUser(YsSmaller(passedTime, 0.025), userControl);
+	}
+	
+	// Check for crash or termination first
+	SimCheckEndOfSimulation();
+	
+	// Check player state
+	FsAirplane *playerPlane = GetPlayerAirplane();
+	
+	// Use threaded simulation if calculation thread is available and player is alive
+	if (calcThread != nullptr && terminate != YSTRUE && 
+	    (playerPlane == NULL || playerPlane->IsAlive() == YSTRUE))
 	{
 		SimulateOneStepThreaded(passedTime, demoMode, record, showTimer, networkStandby, userControl, showTimeMarker);
 		return;
@@ -2609,14 +2622,11 @@ void FsSimulation::SimulateOneStep(
 				nextControlTime=currentTime+0.025;
 			}
 
-		#ifdef CRASHINVESTIGATION
-			printf("S4.5\n");
-		#endif
-
-			if(demoMode!=YSTRUE && networkStandby!=YSTRUE && userControl!=FSUSC_DISABLE)
-			{
-				SimControlByUser(dt,userControl);  // CAUTION: SimControlByUser must be after SimControlByComputer
-			}
+		// Process user input EARLIER in the cycle so it's immediately visible
+		if(demoMode!=YSTRUE && networkStandby!=YSTRUE && userControl!=FSUSC_DISABLE)
+		{
+			SimControlByUser(dt,userControl);  // CAUTION: SimControlByUser must be after SimControlByComputer
+		}
 
 		#ifdef CRASHINVESTIGATION
 			printf("S5\n");
@@ -2787,8 +2797,11 @@ void FsSimulation::AfterSimulation(void)
 	fsConsole.Printf("Terminating Sound\n");
 	FsSoundStopAll();
 	
-	// Clean up the calculation thread when simulation ends
-	CleanupCalculationThread();
+	// Make sure the calculation thread is cleaned up
+	if (calcThread != nullptr)
+	{
+		CleanupCalculationThread();
+	}
 
 	fsConsole.Printf("Collecting Flight Record 1/1\n");
 	bulletHolder.CollectRecord();
@@ -4623,6 +4636,10 @@ void FsSimulation::SimCheckEndOfSimulation(void)
 		        playerObj->isPlayingRecord!=YSTRUE &&
 		        playerObj->IsActive()!=YSTRUE)
 		{
+			if (calcThread != nullptr)
+			{
+				CleanupCalculationThread(); // Stop thread before showing dialog
+			}
 			endTime=currentTime+3.0;
 		}
 		else if(GetNumAirplane()==0)
@@ -4647,6 +4664,9 @@ void FsSimulation::SimCheckEndOfFlightRecord(void)
 
 void FsSimulation::SimControlByUser(const double &dt,FSUSERCONTROL userControl)
 {
+	// Always update viewpoint during user control
+	DecideAllViewPoint(dt);
+	
 	int mx,my;
 	YSBOOL lb,mb,rb;
 
