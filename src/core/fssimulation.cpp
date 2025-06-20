@@ -14,7 +14,6 @@
 #include "fsconfig.h"
 
 #include "fs.h"
-#include "fssimulationcalcthread.h"
 #include "fsradar.h"
 #include "fsfilename.h"
 #include "fsinstpanel.h"
@@ -144,7 +143,6 @@ FsSimulation::FsSimulation(FsWorld *w) : airplaneList(FsAirplaneAllocator),groun
 	needRedraw=YSFALSE;
 	firstPlayer.Initialize();
 
-	calcThread=nullptr;
 	cfgPtr=new FsFlightConfig;
 	hud=new FsHeadUpDisplay;
 	hud2=new FsHud2;
@@ -313,9 +311,6 @@ FsSimulation::FsSimulation(FsWorld *w) : airplaneList(FsAirplaneAllocator),groun
 
 FsSimulation::~FsSimulation()
 {
-	// Clean up the calculation thread if it exists
-	CleanupCalculationThread();
-
 	DeleteCenterJoystick();
 
 	FsAirplane *air;
@@ -2255,12 +2250,6 @@ void FsSimulation::PrepareRunSimulation(void)
 	SetTerminate(YSFALSE);
 	pause=YSFALSE;
 	escKeyCount=0;
-	
-	// Initialize the calculation thread for flight simulation
-	InitCalculationThread();
-
-
-
 
 
 	ClearUserInterface();    // 2009/03/29
@@ -2531,12 +2520,6 @@ void FsSimulation::SimulateOneStep(
 		printf("S0\n");
 	#endif
 
-	// Use threaded simulation if calculation thread is available
-	if (calcThread != nullptr)
-	{
-		SimulateOneStepThreaded(passedTime, demoMode, record, showTimer, networkStandby, userControl, showTimeMarker);
-		return;
-	}
 
 	if(NULL==firstPlayer.GetObject(this) && NULL!=GetPlayerObject())
 	{
@@ -2786,9 +2769,6 @@ void FsSimulation::AfterSimulation(void)
 
 	fsConsole.Printf("Terminating Sound\n");
 	FsSoundStopAll();
-	
-	// Clean up the calculation thread when simulation ends
-	CleanupCalculationThread();
 
 	fsConsole.Printf("Collecting Flight Record 1/1\n");
 	bulletHolder.CollectRecord();
