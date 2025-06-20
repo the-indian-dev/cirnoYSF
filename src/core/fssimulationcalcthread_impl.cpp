@@ -83,8 +83,6 @@ void FsSimulation::SimulateOneStepThreaded(
                 dt = deltaTime;
             }
 
-            // Important: No locking here to ensure inputs are processed freely
-
             // Move simulation one step forward
             if (calcThread != nullptr && calcThread->IsActive())
             {
@@ -93,16 +91,7 @@ void FsSimulation::SimulateOneStepThreaded(
                     calcThread->QueueCalculation(dt, demoMode, record, showTimer, networkStandby, userControl, showTimeMarker);
                 }
                 // DO NOT wait for the calculation to complete - let it run asynchronously
-                
-                // Camera updates are critical for player tracking
-                DecideAllViewPoint(dt);
-            }
-            
-            // Process user input in main thread regardless of threading mode
-            // CRITICAL: This must happen after queuing calculations so inputs are immediately visible
-            if (demoMode != YSTRUE && networkStandby != YSTRUE && userControl != FSUSC_DISABLE)
-            {
-                SimControlByUser(dt, userControl);
+                // This prevents main thread blocking and allows input to be processed
             }
             else
             {
@@ -118,6 +107,11 @@ void FsSimulation::SimulateOneStepThreaded(
                     SimControlByComputer(currentTime - lastControlledTime);
                     lastControlledTime = currentTime;
                     nextControlTime = currentTime + 0.025;
+                }
+                
+                if (demoMode != YSTRUE && networkStandby != YSTRUE && userControl != FSUSC_DISABLE)
+                {
+                    SimControlByUser(dt, userControl);
                 }
                 
                 if (record == YSTRUE)
@@ -137,26 +131,14 @@ void FsSimulation::SimulateOneStepThreaded(
             
             deltaTime -= dt;
             
-            // Always break after one step in threaded mode to process inputs each frame
+            // Always break after processing one step in threaded mode
+            // This ensures that user input is processed every frame
             if (calcThread != nullptr && calcThread->IsActive()) {
-                // Camera and view control are critical - always update in the main thread
-                DecideAllViewPoint(dt);
-                
-                // Make sure we detect crashes and termination
-                SimCheckEndOfSimulation();
-                
-                // Stop processing additional steps - one step per frame in threading mode
                 break;
             }
         }
     }
 
-    // Final critical camera updates at the end of the frame
-    DecideAllViewPoint(passedTime);
-    
-    // Process any input dialogs that might need to be shown
-    SimInFlightDialogTransition();
-    
     // Always check state directly from current state
     // Don't rely on the results of the async calculation thread
     // since it could be behind by a frame

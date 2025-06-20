@@ -172,40 +172,28 @@ void FsSimulationCalculationThread::ThreadFunction()
             continue;
         }
         
-        // Grab the sim mutex for minimal time - primarily for physics
+        // Grab the sim mutex for minimal time
         {
-            // Never block if we can't get the lock immediately
+            // Try to get the lock, but don't block
             if (simMutex.try_lock()) {
-                // Critical section - keep as short as possible 
+                // Critical section - keep as short as possible
                 try {
-                    // Avoid using user flight controls - just physics
+                    // Directly call the core movement function to avoid overhead
                     sim->SimMove(currentParams.deltaTime);
                     
                     // Update sim time - this is key for keeping in sync
                     sim->currentTime += currentParams.deltaTime;
                     
-                    // Only handle AI on appropriate schedules - never user input
+                    // Only handle AI on appropriate schedules
                     if (sim->currentTime >= sim->nextControlTime) {
                         sim->SimControlByComputer(sim->currentTime - sim->lastControlledTime);
                         sim->lastControlledTime = sim->currentTime;
                         sim->nextControlTime = sim->currentTime + 0.025;
                     }
                     
-                    // Weapons and explosions physics
+                    // Handle weapon physics
                     sim->bulletHolder.PlayRecord(sim->CurrentTime(), currentParams.deltaTime);
                     sim->explosionHolder.PlayRecord(sim->CurrentTime(), currentParams.deltaTime);
-                    
-                    // Record flight data if needed
-                    if (currentParams.record == YSTRUE) {
-                        if (sim->currentTime > sim->nextAirRecordTime) {
-                            sim->SimRecordAir(sim->currentTime, YSFALSE);
-                            sim->nextAirRecordTime = sim->currentTime + 0.05;
-                        }
-                        if (sim->currentTime > sim->nextGndRecordTime) {
-                            sim->SimRecordGnd(sim->currentTime, YSFALSE);
-                            sim->nextGndRecordTime = sim->currentTime + 1.0;
-                        }
-                    }
                 } catch (...) {
                     // Safety to prevent crashes
                 }
@@ -218,8 +206,5 @@ void FsSimulationCalculationThread::ThreadFunction()
         // Mark as done regardless of whether we succeeded
         calculationDone = true;
         calcDoneCV.notify_all();
-        
-        // Always let the main thread have priority
-        std::this_thread::yield();
     }
 }
