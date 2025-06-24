@@ -1360,7 +1360,7 @@ YSRESULT FsSocketServer::BroadcastAirplaneState(void)
 				{
 					turretPackSize=0;
 				}
-			
+
 
 				int userId;
 				for(userId=0; userId<FS_MAX_NUM_USER; userId++)
@@ -1427,7 +1427,7 @@ YSRESULT FsSocketServer::RectifyIllegalMissiles(void)
 
 	FsAirplane *playerPlane;
 	playerPlane=sim->GetPlayerAirplane();
-	if(playerPlane!=NULL && 
+	if(playerPlane!=NULL &&
 	   (playerPlane->Prop().GetNumWeapon(FSWEAPON_AIM9)>0 ||
 	    playerPlane->Prop().GetNumWeapon(FSWEAPON_AIM9X)>0))
 	{
@@ -2540,6 +2540,12 @@ YSRESULT FsSocketServer::ReceiveLogOnUser(int clientId,int version,const char re
 	{
 		versionCheck=YSOK;
 	}
+	// The netcode has not changed since 20150425, so it is safe to accept
+	else if(version >= 20150425)
+	{
+        versionCheck=YSOK;
+	}
+
 	else if(netcfg->serverAcceptSameVersionOnly!=YSTRUE)
 	{
 		if(version==20080220)
@@ -2840,8 +2846,14 @@ YSRESULT FsSocketServer::ReceiveListReadBack(int clientId,unsigned char dat[])
 		{
 			printf("%d\n",(int)user[clientId].airTypeToSend.GetN());
 		}
-
-		CheckAndSendPendingData(clientId,sim->currentTime,1.5);
+	    if(user[clientId].airTypeToSend.GetN() > 0)
+        {
+            SendAirplaneList(clientId, 32); // Send the next 32 aircraft
+            FlushSendQueue(clientId, FS_NETTIMEOUT); // And flush it immediately
+        }
+        else {
+            CheckAndSendPendingData(clientId,sim->currentTime,1.5);
+        }
 
 		break;
 	case 2:
@@ -3582,7 +3594,7 @@ YSRESULT FsSocketServer::ReceiveListUser(int clientId)
 
 YSRESULT FsSocketServer::ReceiveQueryAirState(int clientId,unsigned char cmdTop[],unsigned )
 {
-	printf("ReceiveQueryAirState\n"); 
+	printf("ReceiveQueryAirState\n");
 	if(clientId<FS_MAX_NUM_USER && user[clientId].state!=FSUSERSTATE_NOTCONNECTED)
 	{
 		const unsigned char *ptr=cmdTop;
@@ -4567,7 +4579,7 @@ YSRESULT FsSocketServer::SendForceJoin(int clientId)
 // 	{
 // 		int len;
 // 		int isAir,idOnSvr;
-// 
+//
 // 		if(obj!=NULL && EncodeObject(isAir,idOnSvr,obj)==YSOK && obj->motionPath!=NULL)
 // 		{
 // 			len=strlen(obj->motionPath->GetTag());
@@ -4575,25 +4587,25 @@ YSRESULT FsSocketServer::SendForceJoin(int clientId)
 // 			{
 // 				unsigned int packetLength;
 // 				unsigned char *ptr,dat[256];
-// 
+//
 // 				ptr=dat;
 // 				FsPushInt(ptr,FSNETCMD_ASSIGNMOTIONPATH);
 // 				FsPushInt(ptr,0);    // Reserved
 // 				FsPushShort(ptr,0);  // Reserved
 // 				FsPushShort(ptr,isAir);
 // 				FsPushInt(ptr,idOnSvr);
-// 
+//
 // 				FsPushShort(ptr,(int)obj->useMotionPathOffset);
 // 				FsPushShort(ptr,(int)obj->motionPathIndex);
 // 				FsPushFloat(ptr,(float)obj->motionPathOffset.x());
 // 				FsPushFloat(ptr,(float)obj->motionPathOffset.y());
 // 				FsPushFloat(ptr,(float)obj->motionPathOffset.z());
-// 
+//
 // 				strcpy((char *)ptr,obj->motionPath->GetTag());
-// 
+//
 // 				packetLength=(ptr-dat)+len+1;
 // 				packetLength=(packetLength+3)&~3;
-// 
+//
 // 				return SendPacket(clientId,packetLength,dat);
 // 			}
 // 		}
@@ -4835,7 +4847,7 @@ YSRESULT FsSocketServer::SendPacket(int clientId,YSSIZE_T nDat,unsigned char dat
 // 	unsigned int i,total;
 // 	YsArray <unsigned char> buf;
 // 	YSRESULT res;
-// 
+//
 // 	total=nDat+4;
 // 	buf.Set(total,NULL);
 // 	FsSetUnsignedInt(buf,nDat);
@@ -4843,7 +4855,7 @@ YSRESULT FsSocketServer::SendPacket(int clientId,YSSIZE_T nDat,unsigned char dat
 // 	{
 // 		buf.SetItem(4+i,dat[i]);
 // 	}
-// 
+//
 // 	for(i=0; i<FS_NETPRIORITYPACKETRETRY; i++)
 // 	{
 // 		res=Send(clientId,buf.GetN(),buf,FS_NETPRIORITYPACKETTIMEOUT);
@@ -4856,12 +4868,12 @@ YSRESULT FsSocketServer::SendPacket(int clientId,YSSIZE_T nDat,unsigned char dat
 // 			FsSleep(FS_NETPRIORITYPACKETSLEEP);
 // 		}
 // 	}
-// 
+//
 // 	if(res!=YSOK)
 // 	{
 // 		AddMessage("Could not send a priority packet.");
 // 	}
-// 
+//
 // 	return res;
 // }
 
@@ -4925,7 +4937,7 @@ YSRESULT FsSocketServer::DecodeObject(FsExistence **obj,int isAirplane,int idOnS
 ////////////////////////////////////////////////////////////
 
 
-FsSocketClient::FsSocketClient(const char username[],const int port,FsSimulation *sim,FsNetConfig *cfg) : 
+FsSocketClient::FsSocketClient(const char username[],const int port,FsSimulation *sim,FsNetConfig *cfg) :
     YsSocketClient(port),
     FsClientVariable(username,sim,cfg)
 {
@@ -4970,8 +4982,17 @@ YSRESULT FsSocketClient::Received(YSSIZE_T nBytes,unsigned char dat[])
 		unsigned int comBufPtr;
 		comBufPtr=0;
 
+		// On Linux, network packets starve the main render loop
+		// so we process packets in chunks.
+        const int maxPacketsPerCall = 16;
+        int packetsProcessed = 0;
+
 		for(;;)
 		{
+		    if (packetsProcessed >= maxPacketsPerCall)
+            {
+                break;  // Limit the number of packets processed in one call
+            }
 			unsigned packetLength;
 			if(comBufPtr+4<=nComBuf)
 			{
@@ -7219,22 +7240,22 @@ YSRESULT FsSocketClient::ReceiveGndTurretState(unsigned char dat[],unsigned int 
 // 	const YsSceneryPointSet *mpath;
 // 	YSBOOL useMotionPathOffset;
 // 	float x,y,z;
-// 
+//
 // 	ptr=dat;
-// 
+//
 // 	FsPopInt(ptr);  // Skipping command
-// 
+//
 // 	FsPopInt(ptr);
 // 	FsPopShort(ptr);
 // 	isAir=(YSBOOL)FsPopShort(ptr);
 // 	idOnSvr=      FsPopInt(ptr);
-// 
+//
 // 	useMotionPathOffset=(YSBOOL)FsPopShort(ptr);
 // 	mpathIndex=FsPopShort(ptr);
 // 	x=FsPopFloat(ptr);
 // 	y=FsPopFloat(ptr);
 // 	z=FsPopFloat(ptr);
-// 
+//
 // 	mpath=sim->SearchMotionPathByTag((char *)ptr);
 // 	obj=FindObject(idOnSvr,isAir);
 // 	if(obj!=NULL && mpath!=NULL)
@@ -7243,9 +7264,9 @@ YSRESULT FsSocketClient::ReceiveGndTurretState(unsigned char dat[],unsigned int 
 // 		obj->useMotionPathOffset=useMotionPathOffset;
 // 		obj->motionPathIndex=mpathIndex;
 // 		obj->motionPathOffset.Set(x,y,z);
-// 
+//
 // 		printf("ID %d MPATH %s OFST %d %f %f %f\n",idOnSvr,mpath->GetTag(),useMotionPathOffset,x,y,z);
-// 
+//
 // 		return YSOK;
 // 	}
 // 	return YSERR;
@@ -8605,7 +8626,7 @@ YSRESULT FsSimulation::ServerState_StandBy(
 			}
 			break;
 		case FSNCC_SVR_STARTINTERCEPTMISSION:
-			if(svr.baseDefenseModeRemainingTime<YsTolerance && 
+			if(svr.baseDefenseModeRemainingTime<YsTolerance &&
 			   svr.enduranceModeRemainingTime<YsTolerance &&
 			   svr.closeAirSupportMissionRemainingTime<YsTolerance)
 			{
@@ -8645,7 +8666,7 @@ YSRESULT FsSimulation::ServerState_StandBy(
 			}
 			break;
 		case FSNCC_SVR_STARTCLOSEAIRSUPPORTMISSION:
-			if(svr.baseDefenseModeRemainingTime<YsTolerance && 
+			if(svr.baseDefenseModeRemainingTime<YsTolerance &&
 			   svr.enduranceModeRemainingTime<YsTolerance &&
 			   svr.closeAirSupportMissionRemainingTime<YsTolerance)
 			{
@@ -9121,7 +9142,7 @@ void FsSimulation::RunServerModeOneStep(FsServerRunLoop &svrSta)
 			// 2009/07/10 <<
 
 			server.timeToBroadcastAirplane+=passedTime;
-			if(server.timeToBroadcastAirplane>0.1)
+			if(server.timeToBroadcastAirplane>0.01)
 			{
 				server.BroadcastAirplaneState();
 				if(svrSta.netcfg.useMissile!=YSTRUE)
@@ -9131,7 +9152,7 @@ void FsSimulation::RunServerModeOneStep(FsServerRunLoop &svrSta)
 				server.timeToBroadcastAirplane=0.0;
 			}
 			server.timeToBroadcastGround+=passedTime;
-			if(server.timeToBroadcastGround>0.6)
+			if(server.timeToBroadcastGround>0.02)
 			{
 				server.BroadcastGroundState();
 				server.timeToBroadcastGround=0.0;
@@ -10691,4 +10712,3 @@ FsServerRunLoop::~FsServerRunLoop()
 	delete opt;
 	delete svrDlg;
 }
-
