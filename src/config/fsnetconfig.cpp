@@ -1,6 +1,7 @@
 #include <ysclass.h>
 #include <ysport.h>
 #include <time.h>
+#include "fsrandusername.h"
 
 
 #include "fsnetconfig.h"
@@ -63,12 +64,14 @@ FsNetConfig::FsNetConfig()
 
 void FsNetConfig::SetDefault(void)
 {
+    UsernameGenerator usernameGen;
+    std::string randUsername = usernameGen.generate();
 	useMissile=YSTRUE;
 	useUnguidedWeapon=YSTRUE;
 	disableRadarGunSight=YSFALSE;
 	serverWait=YSTRUE;
 	defHost[0]=0;
-	strcpy(defUser,"USERNAME");
+	strcpy(defUser,randUsername.c_str());
 	recordWhenClientMode=YSTRUE;
 	freeMemoryWhenPossibleClientMode=YSFALSE;
 	recordWhenServerMode=YSFALSE;
@@ -379,4 +382,3 @@ YSRESULT FsNetConfig::Save(const wchar_t fn[])
 		return YSERR;
 	}
 }
-
