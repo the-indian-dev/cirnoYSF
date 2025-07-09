@@ -22,6 +22,11 @@ void FsSetCloudDensity(double density)
 
 double FsGetCloudDensity(void)
 {
+	// Ensure cloud density is within reasonable bounds
+	if(g_cloudDensityMultiplier < 0.1)
+		return 0.1;
+	if(g_cloudDensityMultiplier > 10.0)
+		return 10.0;
 	return g_cloudDensityMultiplier;
 }
 
@@ -174,6 +179,11 @@ void FsClouds::Scatter
 {
 	// Apply cloud density multiplier
 	n = (int)(n * g_cloudDensityMultiplier);
+
+	// Add bounds checking to prevent memory issues
+	if(n < 0) n = 0;
+	if(n > 500) n = 500;
+
 	if(cld!=NULL)
 	{
 		delete [] cld;
@@ -1091,6 +1101,11 @@ void FsSolidClouds::Make(
 {
 	// Apply cloud density multiplier
 	n = (int)(n * g_cloudDensityMultiplier);
+
+	// Add bounds checking to prevent memory issues
+	if(n < 0) n = 0;
+	if(n > 300) n = 300;
+
 	for(int i=0; i<n; i++)
 	{
 		YsVec3 mov;
@@ -1119,7 +1134,7 @@ void FsSolidClouds::AddToParticleManager(
 	const YsVec3 &viewDir,const YsMatrix4x4 &viewMdlTfm,const double &nearZ,const double &farZ,const double &tanFov)
 {
 	double baseBrightness=(FSDAYLIGHT==env ? 0.7 : (FSSUNSET==env ? 0.5 : 0.15));
-	
+
 	// Make clouds much darker during rain
 	if(weather.GetWeatherType() == FSWEATHER_RAIN)
 	{
@@ -1175,4 +1190,286 @@ void FsSolidClouds::Draw(
 
 	EndDrawCloud();
 }
+
+// Dynamic Cloud Manager Implementation
+FsDynamicCloudManager::CloudRegion::CloudRegion()
+{
+	gridX = 0;
+	gridZ = 0;
+	center = YsOrigin();
+	solidClouds = NULL;
+	isActive = YSFALSE;
+}
+
+FsDynamicCloudManager::CloudRegion::~CloudRegion()
+{
+	Cleanup();
+}
+
+void FsDynamicCloudManager::CloudRegion::Initialize(int x, int z, double gridSize, double ceiling)
+{
+	gridX = x;
+	gridZ = z;
+	center.Set(x * gridSize, 0.0, z * gridSize);
+	isActive = YSTRUE;
+
+	// Get cloud density with safety bounds
+	double density = FsGetCloudDensity();
+
+	// Create solid clouds
+	solidClouds = new FsSolidClouds();
+	if(solidClouds != NULL)
+	{
+		int numClouds = (int)(6 * density); // Reduced from 12 to spread more evenly
+		if(numClouds > 0 && numClouds < 150) // Cap at 150 solid clouds per region
+		{
+			solidClouds->Make(numClouds, center, gridSize * 0.8, 6000.0, ceiling - 400.0, ceiling + 400.0);
+		}
+	}
+}
+
+void FsDynamicCloudManager::CloudRegion::Cleanup()
+{
+	if(solidClouds != NULL)
+	{
+		delete solidClouds;
+		solidClouds = NULL;
+	}
+	isActive = YSFALSE;
+}
+
+FsDynamicCloudManager::FsDynamicCloudManager()
+{
+	gridSize = 30000.0; // 30km grid
+	ceiling = 3000.0;
+	lastUpdateTime = 0.0;
+	lastPlayerPos = YsOrigin();
+	currentPlayerGridX = 0;
+	currentPlayerGridZ = 0;
+	isUpdating = false;
+}
+
+FsDynamicCloudManager::~FsDynamicCloudManager()
+{
+	WaitForPendingTasks();
+	Reset();
+}
+
+void FsDynamicCloudManager::Initialize(double regionSize, double cloudCeiling)
+{
+	gridSize = regionSize;
+	ceiling = cloudCeiling;
+	Reset();
+}
+
+void FsDynamicCloudManager::Update(const YsVec3 &playerPos, double currentTime)
+{
+	// Only update every 2 seconds to avoid constant recalculation
+	if(currentTime - lastUpdateTime < 2.0)
+	{
+		return;
+	}
+
+	lastUpdateTime = currentTime;
+
+	// Calculate player's grid position
+	int playerGridX = (int)floor(playerPos.x() / gridSize);
+	int playerGridZ = (int)floor(playerPos.z() / gridSize);
+
+	// Check if player moved to a new grid
+	if(playerGridX != currentPlayerGridX || playerGridZ != currentPlayerGridZ)
+	{
+		currentPlayerGridX = playerGridX;
+		currentPlayerGridZ = playerGridZ;
+		UpdateCloudRegions(playerPos, currentTime);
+	}
+
+	lastPlayerPos = playerPos;
+}
+
+void FsDynamicCloudManager::UpdateCloudRegions(const YsVec3 &playerPos, double currentTime)
+{
+	// Clean up completed tasks
+	WaitForPendingTasks();
+
+	// Create cloud regions in a 3x3 grid around the player
+	const int radius = 1; // This creates a 3x3 grid
+
+	for(int dx = -radius; dx <= radius; dx++)
+	{
+		for(int dz = -radius; dz <= radius; dz++)
+		{
+			int gridX = currentPlayerGridX + dx;
+			int gridZ = currentPlayerGridZ + dz;
+
+			// Check if this region already exists
+			if(FindRegion(gridX, gridZ) == NULL)
+			{
+				CreateCloudRegion(gridX, gridZ);
+			}
+		}
+	}
+
+	// Remove regions that are too far away
+	RemoveDistantRegions(playerPos);
+}
+
+void FsDynamicCloudManager::CreateCloudRegion(int gridX, int gridZ)
+{
+	// Use multithreading if we have capacity
+	unsigned int maxThreads = std::max(8U, std::thread::hardware_concurrency());
+	if(cloudGenerationTasks.size() < maxThreads) // Limit concurrent tasks
+	{
+		auto task = std::async(std::launch::async, &FsDynamicCloudManager::CreateCloudRegionThreaded, this, gridX, gridZ);
+		cloudGenerationTasks.push_back(std::move(task));
+	}
+	else
+	{
+		// Fallback to synchronous creation
+		CloudRegion* newRegion = new CloudRegion();
+		newRegion->Initialize(gridX, gridZ, gridSize, ceiling);
+
+		std::lock_guard<std::mutex> lock(regionMutex);
+		activeRegions.Append(newRegion);
+	}
+}
+
+void FsDynamicCloudManager::CreateCloudRegionThreaded(int gridX, int gridZ)
+{
+	CloudRegion* newRegion = new CloudRegion();
+	newRegion->Initialize(gridX, gridZ, gridSize, ceiling);
+
+	std::lock_guard<std::mutex> lock(regionMutex);
+	activeRegions.Append(newRegion);
+}
+
+void FsDynamicCloudManager::RemoveDistantRegions(const YsVec3 &playerPos)
+{
+	const double maxDistance = gridSize * 2.5; // Keep regions within 2.5 grid units
+
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = activeRegions.GetN() - 1; i >= 0; i--)
+	{
+		CloudRegion* region = activeRegions[i];
+		if(region != NULL)
+		{
+			double distance = (region->center - playerPos).GetLength();
+
+			if(distance > maxDistance)
+			{
+				delete region;
+				activeRegions.Delete(i);
+			}
+		}
+		else
+		{
+			// Remove null regions
+			activeRegions.Delete(i);
+		}
+	}
+}
+
+FsDynamicCloudManager::CloudRegion* FsDynamicCloudManager::FindRegion(int gridX, int gridZ)
+{
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = 0; i < activeRegions.GetN(); i++)
+	{
+		CloudRegion* region = activeRegions[i];
+		if(region != NULL && region->gridX == gridX && region->gridZ == gridZ)
+		{
+			return region;
+		}
+	}
+	return NULL;
+}
+
+
+
+void FsDynamicCloudManager::DrawSolidClouds(FSENVIRONMENT env, const class FsWeather &weather,
+                                           const YsMatrix4x4 &viewMdlTfm, const double &nearZ, const double &farZ, const double &tanFov)
+{
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = 0; i < activeRegions.GetN(); i++)
+	{
+		CloudRegion* region = activeRegions[i];
+		if(region != NULL && region->isActive == YSTRUE && region->solidClouds != NULL)
+		{
+			region->solidClouds->Draw(env, weather, viewMdlTfm, nearZ, farZ, tanFov);
+		}
+	}
+}
+
+void FsDynamicCloudManager::AddToParticleManager(class YsGLParticleManager &partMan, FSENVIRONMENT env, const class FsWeather &weather,
+                                                const YsVec3 &viewDir, const YsMatrix4x4 &viewMdlTfm, const double &nearZ, const double &farZ, const double &tanFov)
+{
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = 0; i < activeRegions.GetN(); i++)
+	{
+		CloudRegion* region = activeRegions[i];
+		if(region != NULL && region->isActive == YSTRUE && region->solidClouds != NULL)
+		{
+			region->solidClouds->AddToParticleManager(partMan, env, weather, viewDir, viewMdlTfm, nearZ, farZ, tanFov);
+		}
+	}
+}
+
+void FsDynamicCloudManager::Reset()
+{
+	WaitForPendingTasks();
+
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = 0; i < activeRegions.GetN(); i++)
+	{
+		delete activeRegions[i];
+	}
+	activeRegions.Clear();
+	lastUpdateTime = 0.0;
+	lastPlayerPos = YsOrigin();
+	currentPlayerGridX = 0;
+	currentPlayerGridZ = 0;
+}
+
+YSBOOL FsDynamicCloudManager::IsInCloud(const YsVec3 &pos) const
+{
+	std::lock_guard<std::mutex> lock(regionMutex);
+	for(int i = 0; i < activeRegions.GetN(); i++)
+	{
+		CloudRegion* region = activeRegions[i];
+		if(region != NULL && region->isActive == YSTRUE && region->solidClouds != NULL)
+		{
+			if(region->solidClouds->IsInCloud(pos) == YSTRUE)
+			{
+				return YSTRUE;
+			}
+		}
+	}
+	return YSFALSE;
+}
+
+void FsDynamicCloudManager::WaitForPendingTasks()
+{
+	// Clean up completed tasks
+	for(auto it = cloudGenerationTasks.begin(); it != cloudGenerationTasks.end();)
+	{
+		if(it->wait_for(std::chrono::milliseconds(0)) == std::future_status::ready)
+		{
+			it = cloudGenerationTasks.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+	
+	// Wait for all remaining tasks to complete
+	for(auto& task : cloudGenerationTasks)
+	{
+		if(task.valid())
+		{
+			task.wait();
+		}
+	}
+	cloudGenerationTasks.clear();
+}
+
 

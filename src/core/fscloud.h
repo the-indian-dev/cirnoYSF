@@ -3,6 +3,10 @@
 /* { */
 
 #include <ysglbuffermanager.h>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <future>
 
 class FsCloud
 {
@@ -140,6 +144,61 @@ public:
 	void EndDrawCloud(void);
 	void ReduceVisibilityByPolygon(const YsMatrix4x4 &viewTfm,const YsColor &col,YSBOOL transparency);
 	void Make(int n,const YsVec3 &cen,const double &range,const double &sizeX,const double &y0,const double &y1);
+};
+
+// Dynamic cloud management system
+class FsDynamicCloudManager
+{
+private:
+	struct CloudRegion
+	{
+		int gridX, gridZ;
+		YsVec3 center;
+		FsSolidClouds *solidClouds;
+		YSBOOL isActive;
+		
+		CloudRegion();
+		~CloudRegion();
+		void Initialize(int x, int z, double gridSize, double ceiling);
+		void Cleanup();
+		
+	private:
+		// Make non-copyable to avoid double-deletion
+		CloudRegion(const CloudRegion&);
+		CloudRegion& operator=(const CloudRegion&);
+	};
+	
+	YsArray<CloudRegion*> activeRegions;
+	double gridSize;
+	double ceiling;
+	double lastUpdateTime;
+	YsVec3 lastPlayerPos;
+	int currentPlayerGridX, currentPlayerGridZ;
+	
+	// Threading support
+	mutable std::mutex regionMutex;
+	std::atomic<bool> isUpdating;
+	std::vector<std::future<void>> cloudGenerationTasks;
+	
+	void UpdateCloudRegions(const YsVec3 &playerPos, double currentTime);
+	void CreateCloudRegion(int gridX, int gridZ);
+	void CreateCloudRegionThreaded(int gridX, int gridZ);
+	void RemoveDistantRegions(const YsVec3 &playerPos);
+	CloudRegion* FindRegion(int gridX, int gridZ);
+	void WaitForPendingTasks();
+	
+public:
+	FsDynamicCloudManager();
+	~FsDynamicCloudManager();
+	
+	void Initialize(double regionSize, double cloudCeiling);
+	void Update(const YsVec3 &playerPos, double currentTime);
+	void DrawSolidClouds(FSENVIRONMENT env, const class FsWeather &weather, 
+	                     const YsMatrix4x4 &viewMdlTfm, const double &nearZ, const double &farZ, const double &tanFov);
+	void AddToParticleManager(class YsGLParticleManager &partMan, FSENVIRONMENT env, const class FsWeather &weather,
+	                          const YsVec3 &viewDir, const YsMatrix4x4 &viewMdlTfm, const double &nearZ, const double &farZ, const double &tanFov);
+	void Reset();
+	YSBOOL IsInCloud(const YsVec3 &pos) const;
 };
 
 // Cloud density control functions
