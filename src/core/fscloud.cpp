@@ -12,6 +12,19 @@
 #include "fscloud.h"
 #include "fsweather.h"
 
+// Global cloud density multiplier
+static double g_cloudDensityMultiplier = 1.0;
+
+void FsSetCloudDensity(double density)
+{
+	g_cloudDensityMultiplier = (density > 0.0) ? density : 1.0;
+}
+
+double FsGetCloudDensity(void)
+{
+	return g_cloudDensityMultiplier;
+}
+
 
 
 
@@ -159,6 +172,8 @@ FsClouds::~FsClouds()
 void FsClouds::Scatter
     (int n,const YsVec3 &center,double range,double averageSize,double ceiling)
 {
+	// Apply cloud density multiplier
+	n = (int)(n * g_cloudDensityMultiplier);
 	if(cld!=NULL)
 	{
 		delete [] cld;
@@ -1074,6 +1089,8 @@ YSRESULT FsSolidClouds::Load(FILE *fp)
 void FsSolidClouds::Make(
     int n,const YsVec3 &cen,const double &range,const double &sizeH,const double &y0,const double &y1)
 {
+	// Apply cloud density multiplier
+	n = (int)(n * g_cloudDensityMultiplier);
 	for(int i=0; i<n; i++)
 	{
 		YsVec3 mov;

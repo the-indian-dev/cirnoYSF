@@ -142,6 +142,9 @@ public:
 	void Make(int n,const YsVec3 &cen,const double &range,const double &sizeX,const double &y0,const double &y1);
 };
 
+// Cloud density control functions
+void FsSetCloudDensity(double density);
+double FsGetCloudDensity(void);
 
 /* } */
 #endif

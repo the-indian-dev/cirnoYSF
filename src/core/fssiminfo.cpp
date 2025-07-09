@@ -1797,6 +1797,7 @@ void FsNewFlightEnvironmentInfo::Initialize(void)
 	weatherType=FSWEATHER_CLEAR;
 	fog=YSTRUE;
 	fogVisibility=20000.0;
+	cloudDensity=1.0;
 	cloudLayer.Clear();
 }
 

@@ -116,15 +116,16 @@ void FsNewSimulationDialogTemplate::AddWeatherSelector(void)
 	}
 
 	AddStaticText(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WEATHER,YSTRUE);
-	
+
 	AddStaticText(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WEATHERTYPE,YSTRUE);
 	weatherType[0]=AddTextButton(1,FSKEY_NULL,FSGUI_RADIOBUTTON,FSGUI_NEWFLTDLG_CLEAR,YSFALSE);
 	weatherType[1]=AddTextButton(1,FSKEY_NULL,FSGUI_RADIOBUTTON,FSGUI_NEWFLTDLG_RAIN,YSFALSE);
 	SetRadioButtonGroup(2,weatherType);
-	
+
 	windDir=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WINDDIR,16,0,-360,360,10,YSTRUE);
 	windSpd=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_WINDSPD,16,0,0,50,1,YSTRUE);
 	visibility=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_VISIBILITY,16,20,0,20,1,YSTRUE);
+	cloudDensity=AddNumberBox(1,FSKEY_NULL,FSGUI_NEWFLTDLG_CLOUDDENSITY,16,1,0,10,1,YSTRUE);
 
 
 	AddStaticText(1,FSKEY_NULL,FSGUI_NEWFLTDLG_OVERCASTLAYER,YSTRUE);
@@ -210,7 +211,7 @@ void FsNewSimulationDialogTemplate::OnButtonClick(FsGuiButton *btn)
 	{
 		envButton=YSTRUE;
 	}
-	
+
 	if(btn==weatherType[0] || btn==weatherType[1])
 	{
 		envButton=YSTRUE;
@@ -223,7 +224,7 @@ void FsNewSimulationDialogTemplate::OnButtonClick(FsGuiButton *btn)
 			envButton=YSTRUE;
 		}
 	}
-	
+
 	if(YSTRUE==envButton && NULL!=specifyEnvironment)
 	{
 		specifyEnvironment->SetCheck(YSTRUE);
@@ -253,7 +254,12 @@ void FsNewSimulationDialogTemplate::OnNumberBoxChange(FsGuiNumberBox *nbx,int /*
 			envButton=YSTRUE;
 		}
 	}
-	
+
+	if(nbx==cloudDensity)
+	{
+		envButton=YSTRUE;
+	}
+
 	if(YSTRUE==envButton && NULL!=specifyEnvironment)
 	{
 		specifyEnvironment->SetCheck(YSTRUE);
@@ -686,6 +692,10 @@ void FsGuiNewFlightDialogClass::InitializeDialog(FsWorld *world,const FsNewFligh
 			visibility->SetNumber(20);
 		}
 	}
+	if(cloudDensity!=NULL)
+	{
+		cloudDensity->SetNumber(info.envInfo.cloudDensity);
+	}
 }
 
 void FsGuiNewFlightDialogClass::MakeDefaultWingmanPosition(YsString str[])
@@ -978,6 +988,10 @@ void FsGuiNewFlightDialogClass::OnNumberBoxChange(FsGuiNumberBox *nbx,int prevNu
 		{
 			info.envInfo.fog=YSTRUE;
 			info.envInfo.fogVisibility=(double)nbx->GetNumber()*1609.0;
+		}
+		if(nbx==cloudDensity)
+		{
+			info.envInfo.cloudDensity=nbx->GetNumber();
 		}
 
 
@@ -1893,4 +1907,3 @@ void FsGuiCloseAirSupportMissionDialog::OnModalDialogClosed(int /*dialogIdent*/,
 }
 
 ////////////////////////////////////////////////////////////
-
