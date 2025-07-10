@@ -6454,6 +6454,14 @@ void FsSimulation::SimDrawScreen(
 			{
 				seeker->AddSmokeToParticleManager(partMan,currentTime,cfgPtr->smkRemainTime);
 			}
+			
+			// Add rain particles to particle manager when using particle rendering
+			if(weather->IsRaining() == YSTRUE)
+			{
+				YsVec3 cameraDir;
+				actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
+				weather->AddRainToParticleManager(partMan, actualViewMode.viewPoint, cameraDir, this);
+			}
 		}
 		partMan.Sort(actualViewMode.viewPoint,actualViewMode.viewAttitude.GetForwardVector(),threadPool);
 
@@ -7062,8 +7070,8 @@ void FsSimulation::SimDrawScreenZBufferSensitive(
 		}
 	}
 
-	// Draw rain effects in 3D world space if it's raining
-	if(weather->IsRaining() == YSTRUE)
+	// Draw rain effects in 3D world space if it's raining (only when not using particle rendering)
+	if(weather->IsRaining() == YSTRUE && YSTRUE != cfgPtr->useParticle)
 	{
 		YsVec3 cameraDir;
 		actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
