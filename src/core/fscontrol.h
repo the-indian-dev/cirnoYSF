@@ -90,6 +90,7 @@ enum FSBUTTONFUNCTION
 	FSBTF_RADAR,                         //  Radar
 	FSBTF_RADARRANGEUP,                  //  Radar Range Up
 	FSBTF_RADARRANGEDOWN,                //  Radar Range Down
+	FSBTF_VERTICALRADAR,                 //  Vertical Radar
 	FSBTF_ILS,                           //  ILS On/Off
 	FSBTF_VELOCITYINDICATOR,             //  Velocity Indicator On/Off
 

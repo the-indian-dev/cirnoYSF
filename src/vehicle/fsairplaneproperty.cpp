@@ -166,6 +166,7 @@ void FsAirplaneProperty::InitializeState(void)
 	staWheelAngle=0.0;
 
 	staRadarRange=0.0;   // Radar Off
+	staVerticalRadarRange=0.0;   // Vertical Radar Off
 
 	staVorKey[0]=YSNULLHASHKEY;
 	staVorKey[1]=YSNULLHASHKEY;
@@ -6490,6 +6491,74 @@ YSRESULT FsAirplaneProperty::TurnOffRadar(void)
 {
 	staRadarRange=0.0;
 	return YSOK;
+}
+
+YSRESULT FsAirplaneProperty::ToggleVerticalRadarRange(int dir)
+{
+	const int nChoice=6;
+	const double rangeChoice[nChoice]={0.0,5.0,10.0,25.0,50.0,100.0};
+
+	if(0<=dir)
+	{
+		double nextRadarRange=0.0;
+		for(int i=0; i<nChoice; ++i)
+		{
+			if(YSTRUE==YsEqual(staVerticalRadarRange,rangeChoice[i]))
+			{
+				nextRadarRange=rangeChoice[(i+1)%nChoice];
+				break;
+			}
+		}
+		staVerticalRadarRange=nextRadarRange;
+	}
+	else
+	{
+		double nextRadarRange=rangeChoice[nChoice-1];
+		for(int i=0; i<nChoice; ++i)
+		{
+			if(YSTRUE==YsEqual(staVerticalRadarRange,rangeChoice[i]))
+			{
+				nextRadarRange=rangeChoice[(i+nChoice-1)%nChoice];
+				break;
+			}
+		}
+		staVerticalRadarRange=nextRadarRange;
+	}
+	return YSOK;
+}
+
+YSRESULT FsAirplaneProperty::IncreaseVerticalRadarRange(void)
+{
+	return ToggleVerticalRadarRange(1);
+}
+
+YSRESULT FsAirplaneProperty::ReduceVerticalRadarRange(void)
+{
+	return ToggleVerticalRadarRange(-1);
+}
+
+YSRESULT FsAirplaneProperty::TurnOnVerticalRadar(void)
+{
+	staVerticalRadarRange=5.0;
+	return YSOK;
+}
+
+YSRESULT FsAirplaneProperty::TurnOffVerticalRadar(void)
+{
+	staVerticalRadarRange=0.0;
+	return YSOK;
+}
+
+const double FsAirplaneProperty::GetCurrentVerticalRadarRange(void) const
+{
+	if(YSTRUE!=staRadarInop)
+	{
+		return staVerticalRadarRange;
+	}
+	else
+	{
+		return 0.0;
+	}
 }
 
 YSBOOL FsAirplaneProperty::GetDamage(YSBOOL &killed,int dmg,FSDIEDOF diedOf)

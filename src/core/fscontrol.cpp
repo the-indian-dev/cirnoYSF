@@ -354,6 +354,13 @@ YSRESULT FsFlightControl::ProcessButtonFunction(const double &/*cTime*/,FsExiste
 			air->Prop().ReduceRadarRange();
 		}
 		return YSOK;
+	case FSBTF_VERTICALRADAR:                 //  Vertical Radar
+		if(NULL!=air)
+		{
+			const int dir=(YSTRUE!=FsGetKeyState(FSKEY_SHIFT) ? 1 : -1);
+			air->Prop().ToggleVerticalRadarRange(dir);
+		}
+		return YSOK;
 
 
 	case FSBTF_ILS:                           //  ILS On/Off
@@ -1277,6 +1284,7 @@ static struct FsButtonFunctionString fsButtonFuncStr[]=
 	{FSBTF_RADAR,                "RADAR",                "Radar"},
 	{FSBTF_RADARRANGEUP,         "RADARRANGEUP",         "Radar Range Up"},
 	{FSBTF_RADARRANGEDOWN,       "RADARRANGEDOWN",       "Radar Range Down"},
+	{FSBTF_VERTICALRADAR,        "VERTICALRADAR",        "Vertical Radar"},
 	{FSBTF_ILS,                  "ILS",                  "Switch NAV 1/2"},
 	{FSBTF_VELOCITYINDICATOR,    "VELOCITYINDICATOR",    "Velocity Indicator On/Off"},
 	{FSBTF_OPENAUTOPILOTMENU,    "OPENAUTOPILOTMENU",    "Open Autopilot Menu"},
@@ -1729,6 +1737,7 @@ void FsControlAssignment::SetDefaultKeyAssign(void)
 	AddKeyAssignment(FSKEY_P,       FSBTF_CYCLESMOKESELECTOR);
 	AddKeyAssignment(FSKEY_3,       FSBTF_RADAR);
 	AddKeyAssignment(FSKEY_4,       FSBTF_DISPENSEFLARE);
+	AddKeyAssignment(FSKEY_5,       FSBTF_VERTICALRADAR);
 	AddKeyAssignment(FSKEY_I,       FSBTF_TOGGLELIGHT);
 	AddKeyAssignment(FSKEY_V,       FSBTF_VELOCITYINDICATOR);
 	AddKeyAssignment(FSKEY_BS,      FSBTF_OPENAUTOPILOTMENU);

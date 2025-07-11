@@ -8349,6 +8349,7 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 void FsSimulation::SimDrawRadar(const ActualViewMode &actualViewMode) const
 {
 	FsHorizontalRadar radar;
+	FsVerticalRadar verticalRadar;
 
 	if(NULL!=GetPlayerAirplane())
 	{
@@ -8387,6 +8388,43 @@ void FsSimulation::SimDrawRadar(const ActualViewMode &actualViewMode) const
 				break;
 			case FSWEAPON_BOMB500HD:
 				radar.Draw(this,x1,y1,x2,y2,radarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
+				break;
+			}
+		}
+
+		// Draw vertical radar if active
+		double verticalRadarRange = playerPlane->Prop().GetCurrentVerticalRadarRange();
+		if(YsEqual(verticalRadarRange,0.0)!=YSTRUE)
+		{
+			int wid,hei;
+			FsGetWindowSize(wid,hei);
+
+			long radarSize=wid/5;
+
+			// Position vertical radar on the left side
+			long x1=10;
+			long y1=10;
+			long x2=10+radarSize;
+			long y2=10+radarSize;
+
+			switch(playerPlane->Prop().GetWeaponOfChoice())
+			{
+			default:
+			case FSWEAPON_GUN:
+			case FSWEAPON_AIM9:
+			case FSWEAPON_AIM9X:
+			case FSWEAPON_AIM120:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),0,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_AGM65:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_BOMB:
+			case FSWEAPON_BOMB250:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),2,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_BOMB500HD:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
 				break;
 			}
 		}
