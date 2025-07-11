@@ -159,6 +159,14 @@ void FsDrawCircle(int x,int y,int rad,const YsColor &col,YSBOOL fill)
 {
 }
 
+void FsDrawCircleTransparent(int x,int y,int rad,const YsColor &col,YSBOOL fill)
+{
+}
+
+void FsDrawCircleTransparentClipped(int x,int y,int rad,const YsColor &col,YSBOOL fill,int clipX1,int clipY1,int clipX2,int clipY2)
+{
+}
+
 void FsDrawPolygon(int n,int plg[],const YsColor &col)
 {
 }

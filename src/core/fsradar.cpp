@@ -113,11 +113,12 @@ void FsHorizontalRadar::DrawBasic(
 	YsColor col;
 	const int mkSize=3;
 
-	FsDrawRect(x1,y1,x2,y2,YsGreen(),YSFALSE);
+	//FsDrawRect(x1,y1,x2,y2,YsGreen(),YSFALSE);
 
-	char str[256];
-	sprintf(str,"%d MILES",int(rangeInX));
-	FsDrawString(x1+8,y1+24,str,YsGreen());
+	//moved to bottom for rendering order
+	//char str[256];
+	//sprintf(str,"%d MILES",int(rangeInX));
+	//FsDrawString(x1+8,y1+24,str,YsGreen());
 
 
 	attH=att;
@@ -138,6 +139,56 @@ void FsHorizontalRadar::DrawBasic(
 		wc.Set((w1.x()+w2.x())/2.0,(w1.y()+w2.y()*3.0)/4.0);
 	}
 
+	//x=(int)wc.x();
+	//y=(int)wc.y();
+	//FsDrawLine(x-5,y  ,x+5,y  ,YsGreen());
+	//FsDrawPoint(x+5,y,YsGreen());
+	//FsDrawLine(x  ,y-5,x  ,y+5,YsGreen());
+	//FsDrawPoint(x,y+5,YsGreen());
+
+	// First pass: Draw SAM ranges in background
+	const FsGround *gnd;
+	gnd=NULL;
+	while((gnd=sim->FindNextGround(gnd))!=NULL)
+	{
+		if(gnd->IsAlive()==YSTRUE && gnd->Prop().IsNonGameObject()!=YSTRUE)
+		{
+			YsVec3 pos;
+			YsVec2 prj;
+
+			ref.MulInverse(pos,gnd->GetPosition(),1.0);
+
+			pos*=mag;
+
+			prj.Set(pos.x(),-pos.z());
+			prj+=wc;
+
+			if(YsCheckInsideBoundingBox2(prj,w1,w2)==YSTRUE)
+			{
+				// Only draw SAM ranges for enemy units
+				if(withRespectTo.iff!=gnd->iff && gnd->Prop().GetNumSAM() > 0)
+				{
+					double samRange = gnd->Prop().GetSAMRange();
+					int pixelRadius = int(samRange * mag);
+
+					YsColor redAlpha;
+					redAlpha.SetIntRGBA(255, 0, 0, 50);
+
+					// Use clipped version to stay within radar bounds
+					FsDrawCircleTransparentClipped((int)prj.x(), (int)prj.y(), pixelRadius, redAlpha, YSTRUE, x1, y1, x2, y2);
+				}
+			}
+		}
+	}
+
+	// Second pass: Draw ground units
+	//Draw after the red circles are done
+	FsDrawRect(x1,y1,x2,y2,YsGreen(),YSFALSE);
+
+	char str[256];
+	sprintf(str,"%d MILES",int(rangeInX));
+	FsDrawString(x1+8,y1+24,str,YsGreen());
+
 	x=(int)wc.x();
 	y=(int)wc.y();
 	FsDrawLine(x-5,y  ,x+5,y  ,YsGreen());
@@ -146,7 +197,7 @@ void FsHorizontalRadar::DrawBasic(
 	FsDrawPoint(x,y+5,YsGreen());
 
 
-	const FsGround *gnd;
+
 	gnd=NULL;
 	while((gnd=sim->FindNextGround(gnd))!=NULL)
 	{

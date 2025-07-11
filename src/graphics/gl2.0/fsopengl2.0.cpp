@@ -1027,6 +1027,150 @@ void FsDrawCircle(int x,int y,int rad,const YsColor &col,YSBOOL fill)
 #endif
 }
 
+void FsDrawCircleTransparent(int x,int y,int rad,const YsColor &col,YSBOOL fill)
+{
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparent In");
+#endif
+
+	static YsArray <GLfloat> vtx,color;
+
+	if(vtx.GetN()<128)
+	{
+		vtx.Set(128,NULL);
+	}
+	if(color.GetN()<256)
+	{
+		color.Set(256,NULL);
+	}
+
+	// Enable blending for transparency
+	GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+	if(!blendWasEnabled)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	for(int i=0; i<64; i++)
+	{
+		const GLfloat a=(GLfloat)YsPi*((GLfloat)i)/32.0f;
+		vtx[i*2  ]=(GLfloat)x+(GLfloat)rad*cosf(a);
+		vtx[i*2+1]=(GLfloat)y+(GLfloat)rad*sinf(a);
+		color[i*4  ]=col.Rf();
+		color[i*4+1]=col.Gf();
+		color[i*4+2]=col.Bf();
+		color[i*4+3]=col.Af();  // Include alpha channel
+	}
+
+	YsGLSLPlain2DRenderer *renderer=YsGLSLSharedPlain2DRenderer();
+	YsGLSLUsePlain2DRenderer(renderer);
+	if(fill==YSTRUE)
+	{
+		YsGLSLDrawPlain2DPrimitivefv(renderer,GL_TRIANGLE_FAN,64,vtx,color);
+	}
+	else
+	{
+		YsGLSLDrawPlain2DPrimitivefv(renderer,GL_LINE_LOOP,64,vtx,color);
+	}
+	YsGLSLEndUsePlain2DRenderer(renderer);
+
+	// Restore blending state
+	if(!blendWasEnabled)
+	{
+		glDisable(GL_BLEND);
+	}
+
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparent Out");
+#endif
+}
+
+void FsDrawCircleTransparentClipped(int x,int y,int rad,const YsColor &col,YSBOOL fill,int clipX1,int clipY1,int clipX2,int clipY2)
+{
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparentClipped In");
+#endif
+
+	static YsArray <GLfloat> vtx,color;
+
+	if(vtx.GetN()<128)
+	{
+		vtx.Set(128,NULL);
+	}
+	if(color.GetN()<256)
+	{
+		color.Set(256,NULL);
+	}
+
+	// Enable scissor test for clipping
+	GLboolean scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
+	if(!scissorWasEnabled)
+	{
+		glEnable(GL_SCISSOR_TEST);
+	}
+	
+	// Set scissor rectangle (note: OpenGL uses bottom-left origin)
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int windowHeight = viewport[3];
+	
+	// Convert top-left coordinates to bottom-left
+	int scissorX = clipX1;
+	int scissorY = windowHeight - clipY2;
+	int scissorWidth = clipX2 - clipX1;
+	int scissorHeight = clipY2 - clipY1;
+	
+	glScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+
+	// Enable blending for transparency
+	GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+	if(!blendWasEnabled)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	for(int i=0; i<64; i++)
+	{
+		const GLfloat a=(GLfloat)YsPi*((GLfloat)i)/32.0f;
+		vtx[i*2  ]=(GLfloat)x+(GLfloat)rad*cosf(a);
+		vtx[i*2+1]=(GLfloat)y+(GLfloat)rad*sinf(a);
+		color[i*4  ]=col.Rf();
+		color[i*4+1]=col.Gf();
+		color[i*4+2]=col.Bf();
+		color[i*4+3]=col.Af();  // Include alpha channel
+	}
+
+	YsGLSLPlain2DRenderer *renderer=YsGLSLSharedPlain2DRenderer();
+	YsGLSLUsePlain2DRenderer(renderer);
+	if(fill==YSTRUE)
+	{
+		YsGLSLDrawPlain2DPrimitivefv(renderer,GL_TRIANGLE_FAN,64,vtx,color);
+	}
+	else
+	{
+		YsGLSLDrawPlain2DPrimitivefv(renderer,GL_LINE_LOOP,64,vtx,color);
+	}
+	YsGLSLEndUsePlain2DRenderer(renderer);
+
+	// Restore blending state
+	if(!blendWasEnabled)
+	{
+		glDisable(GL_BLEND);
+	}
+
+	// Restore scissor test state
+	if(!scissorWasEnabled)
+	{
+		glDisable(GL_SCISSOR_TEST);
+	}
+
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparentClipped Out");
+#endif
+}
+
 void FsDrawPolygon(int n,int plg[],const YsColor &col)
 {
 #ifdef YSOGLERRORCHECK
