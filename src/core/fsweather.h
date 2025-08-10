@@ -4,6 +4,9 @@
 
 #include "fsdef.h"
 
+// Forward declaration for particle manager
+class YsGLParticleManager;
+
 // FS_FOG_VISIBILITY_MAX, FS_FOG_VISIBILITY_MIN, FSCLOUDLAYER_NONE, and FSCLOUDLAYER_OVERCAST are moved to fsdef.h
 
 
@@ -66,6 +69,7 @@ public:
 	void UpdateRain(const double &dt);
 	void DrawRain(const YsVec3 &cameraPos, const YsVec3 &cameraDir) const;
 	void DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const;
+	void AddRainToParticleManager(class YsGLParticleManager &partMan, const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const;
 
 	void SetCloudLayer(YSSIZE_T nLayer,const FsWeatherCloudLayer layer[]);
 	void AddCloudLayer(const FsWeatherCloudLayer &layer);

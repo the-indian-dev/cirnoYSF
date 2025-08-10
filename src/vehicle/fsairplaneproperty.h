@@ -162,6 +162,7 @@ protected:
 	double staWheelAngle;
 
 	double staRadarRange;
+	double staVerticalRadarRange;
 
 	unsigned int staVorKey[2],staNdbKey;
 	int staPendingVorYsfId[2],staPendingNdbYsfId;
@@ -577,6 +578,12 @@ public:
 	YSRESULT ReduceRadarRange(void);
 	YSRESULT TurnOnRadar(void);
 	YSRESULT TurnOffRadar(void);
+	YSRESULT ToggleVerticalRadarRange(int dir);
+	YSRESULT IncreaseVerticalRadarRange(void);
+	YSRESULT ReduceVerticalRadarRange(void);
+	YSRESULT TurnOnVerticalRadar(void);
+	YSRESULT TurnOffVerticalRadar(void);
+	const double GetCurrentVerticalRadarRange(void) const;
 	YSBOOL GetDamage(YSBOOL &killed,int dmg,FSDIEDOF diedOf);
 
 	YSRESULT ToggleLight(void);

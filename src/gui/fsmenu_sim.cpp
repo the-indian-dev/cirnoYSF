@@ -20,6 +20,7 @@
 
 #include "graphics/common/fsopengl.h"
 #include "fswirefont.h"
+#include "fscloud.h"
 
 #include "fsdialog.h"
 #include "fsguinewflightdialog.h"
@@ -496,6 +497,9 @@ void FsGuiMainCanvas::Sim_CreateFlight_Create(FsNewFlightDialogInfo &info)
 
 		world->SetFog(info.envInfo.fog);
 		world->SetFogVisibility(info.envInfo.fogVisibility);
+
+		// Set cloud density
+		FsSetCloudDensity(info.envInfo.cloudDensity);
 
 		// Set weather type for rain effects
 		auto sim = world->GetSimulation();
@@ -1581,6 +1585,9 @@ void FsGuiMainCanvas::Sim_RacingMode_Create(FsNewFlightDialogInfo &info)
 
 		world->SetFog(info.envInfo.fog);
 		world->SetFogVisibility(info.envInfo.fogVisibility);
+
+		// Set cloud density
+		FsSetCloudDensity(info.envInfo.cloudDensity);
 
 		// Set weather type for rain effects
 		auto sim = world->GetSimulation();

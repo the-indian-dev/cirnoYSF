@@ -53,6 +53,7 @@ public:
 	FsGuiNumberBox *windDir;
 	FsGuiNumberBox *windSpd;
 	FsGuiNumberBox *visibility;
+	FsGuiNumberBox *cloudDensity;
 
 	enum
 	{

@@ -4,6 +4,7 @@ set(SRCS
 fsconfig.cpp
 fsoption.cpp
 fsnetconfig.cpp
+fsrandusername.cpp
 )
 set(HEADERS
 fsconfig.h

@@ -18,6 +18,8 @@ public:
 	YSBOOL fog;
 	double fogVisibility;
 
+	double cloudDensity;
+
 	YsArray <double> cloudLayer; // [2n+0] Floor [2n+1] Top
 };
 

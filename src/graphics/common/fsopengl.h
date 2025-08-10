@@ -84,6 +84,8 @@ void FsDrawLine(int x1,int y1,int x2,int y2,const YsColor &col);
 
 void FsDrawRect(int x1,int y1,int x2,int y2,const YsColor &col,YSBOOL fill);
 void FsDrawCircle(int x,int y,int rad,const YsColor &col,YSBOOL fill);
+void FsDrawCircleTransparent(int x,int y,int rad,const YsColor &col,YSBOOL fill);
+void FsDrawCircleTransparentClipped(int x,int y,int rad,const YsColor &col,YSBOOL fill,int clipX1,int clipY1,int clipX2,int clipY2);
 void FsDrawPolygon(int n,int plg[],const YsColor &col);
 void FsDrawDiamond(int x,int y,int r,const YsColor &col,YSBOOL fill);
 void FsDrawX(int x,int y,int r,const YsColor &col);

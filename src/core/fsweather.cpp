@@ -10,6 +10,7 @@
 
 #include <ysclass.h>
 #include <ysgl.h>
+#include <ysglparticlemanager.h>
 
 #include "fs.h"
 
@@ -518,7 +519,7 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 
 	// Update particle system with more responsive spawning
 	const double dt = 0.0167; // Assume ~60fps for particle updates
-	const int particlesToSpawn = (int)(rainIntensity * 50.0);
+	const int particlesToSpawn = (int)(rainIntensity * 80.0); // Increased density for better rain effect
 
 	// More frequent optimization but less aggressive culling
 	static double systemTime = 0.0;
@@ -535,10 +536,10 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 		{
 			if(!rainParticles[i].active)
 			{
-				// Spawn particle in area around camera
+				// Spawn particle in area around camera with better distribution
 				double angle = (rand() % 360) * YsPi / 180.0;
-				double distance = 50.0 + (rand() % 300);
-				double height = 80.0 + (rand() % 120);
+				double distance = 40.0 + (rand() % 350); // Broader spawning area for wider rain coverage
+				double height = 100.0 + (rand() % 150); // Higher spawning for longer trails
 
 				rainParticles[i].position.Set(
 					cameraPos.x() + cos(angle) * distance,
@@ -546,18 +547,20 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 					cameraPos.z() + sin(angle) * distance
 				);
 
-				// Rain velocity affected by wind and gravity
+				// Rain velocity with more realistic physics - faster and more vertical
+				double baseSpeed = 250.0 + (rand() % 50); // Faster falling speed
+				double windInfluence = 0.2; // Reduced wind influence for more vertical fall
 				rainParticles[i].velocity.Set(
-					wind.x() * 0.3 + (rand() % 20 - 10) * 0.1,
-					-200.0 - (rand() % 25), // Much faster falling speed
-					wind.z() * 0.3 + (rand() % 20 - 10) * 0.1
+					wind.x() * windInfluence + (rand() % 10 - 5) * 0.05,
+					-baseSpeed - (rand() % 30), // Much faster, more realistic falling speed
+					wind.z() * windInfluence + (rand() % 10 - 5) * 0.05
 				);
 
 				rainParticles[i].life = 0.0f;
-				rainParticles[i].maxLife = 5.0f + (rand() % 30) * 0.1f;
+				rainParticles[i].maxLife = 4.0f + (rand() % 20) * 0.1f; // Shorter life for more dynamic feel
 				rainParticles[i].hitGround = false;
 				rainParticles[i].splashLife = 0.0f;
-				rainParticles[i].size = 0.8f + (rand() % 5) * 0.1f;
+				rainParticles[i].size = 0.42f + (rand() % 3) * 0.07f; // 30% smaller, more realistic size
 				rainParticles[i].active = true;
 				break;
 			}
@@ -643,8 +646,6 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 			rainParticles[i].splashLife += dt;
 		}
 	}
-
-	glEnd();
 
 	// Additional ground impact points for better visibility
 	glPointSize(1.5f);
@@ -758,21 +759,313 @@ void FsWeather::DrawRainWithTerrain(const YsVec3 &cameraPos, const YsVec3 &camer
 			glVertex3d(cameraPos.x() - flashSize, cameraPos.y() + 1200, cameraPos.z() + flashSize);
 			glEnd();
 
-			// Directional lightning effect
-			glColor4f(1.0f, 1.0f, 1.0f, flashIntensity * 0.8f);
+			// Enhanced directional lightning effect with multiple jagged bolts
+			glColor4f(1.0f, 1.0f, 1.0f, flashIntensity * 0.9f);
 			glBegin(GL_LINES);
 
-			YsVec3 lightningStart = cameraPos + YsVec3((rand() % 2000 - 1000), 400 + (rand() % 200), (rand() % 2000 - 1000));
-			YsVec3 lightningEnd = lightningStart + YsVec3((rand() % 200 - 100), -300 - (rand() % 100), (rand() % 200 - 100));
-
-			glVertex3d(lightningStart.x(), lightningStart.y(), lightningStart.z());
-			glVertex3d(lightningEnd.x(), lightningEnd.y(), lightningEnd.z());
+			// Create 2-4 lightning bolts during flash
+			int numBolts = 2 + (rand() % 3);
+			for(int bolt = 0; bolt < numBolts; bolt++)
+			{
+				YsVec3 lightningStart = cameraPos + YsVec3((rand() % 3000 - 1500), 600 + (rand() % 400), (rand() % 3000 - 1500));
+				
+				// Create jagged lightning path
+				int segments = 3 + (rand() % 4);
+				YsVec3 currentPos = lightningStart;
+				
+				for(int seg = 0; seg < segments; seg++)
+				{
+					double segmentLength = 200.0 + (rand() % 200);
+					double jaggedX = (rand() % 300 - 150) * 1.5;
+					double jaggedZ = (rand() % 300 - 150) * 1.5;
+					
+					YsVec3 nextPos = currentPos + YsVec3(jaggedX, -segmentLength, jaggedZ);
+					
+					// Fade intensity per segment
+					float segmentIntensity = flashIntensity * (1.0f - (float)seg / (float)segments * 0.3f);
+					glColor4f(1.0f, 1.0f, 1.0f, segmentIntensity);
+					
+					glVertex3d(currentPos.x(), currentPos.y(), currentPos.z());
+					glVertex3d(nextPos.x(), nextPos.y(), nextPos.z());
+					
+					currentPos = nextPos;
+				}
+			}
 			glEnd();
 		}
 	}
 
+	// Add distant jagged lightning lines randomly in the skybox
+	static double lastLightningTime = 0.0;
+	static double lightningInterval = 3.0 + (rand() % 8); // Random interval between 3-11 seconds
+	
+	if(thunderTimer <= 0.0 && systemTime - lastLightningTime > lightningInterval)
+	{
+		// Create distant jagged lightning lines
+		glColor4f(0.9f, 0.95f, 1.0f, 0.6f);
+		glBegin(GL_LINES);
+		
+		// Generate 1-3 distant lightning bolts
+		int numBolts = 1 + (rand() % 3);
+		for(int bolt = 0; bolt < numBolts; bolt++)
+		{
+			// Random position in distant sky
+			double boltAngle = (rand() % 360) * YsPi / 180.0;
+			double boltDistance = 3000.0 + (rand() % 4000); // Very distant
+			double boltHeight = cameraPos.y() + 800.0 + (rand() % 1200);
+			
+			YsVec3 boltStart(cameraPos.x() + cos(boltAngle) * boltDistance, 
+							 boltHeight, 
+							 cameraPos.z() + sin(boltAngle) * boltDistance);
+			
+			// Create jagged lightning path with 4-8 segments
+			int segments = 4 + (rand() % 5);
+			YsVec3 currentPos = boltStart;
+			
+			for(int seg = 0; seg < segments; seg++)
+			{
+				// Calculate next position with random jagged offset
+				double segmentLength = 150.0 + (rand() % 200);
+				double jaggedX = (rand() % 200 - 100) * 2.0; // Random horizontal jag
+				double jaggedZ = (rand() % 200 - 100) * 2.0; // Random depth jag
+				
+				YsVec3 nextPos = currentPos + YsVec3(jaggedX, -segmentLength, jaggedZ);
+				
+				// Fade alpha based on segment position
+				float segmentAlpha = 0.6f * (1.0f - (float)seg / (float)segments) * 0.8f;
+				glColor4f(0.9f, 0.95f, 1.0f, segmentAlpha);
+				
+				glVertex3d(currentPos.x(), currentPos.y(), currentPos.z());
+				glVertex3d(nextPos.x(), nextPos.y(), nextPos.z());
+				
+				currentPos = nextPos;
+			}
+		}
+		glEnd();
+		
+		// Reset timing
+		lastLightningTime = systemTime;
+		lightningInterval = 3.0 + (rand() % 8);
+	}
+
 	glDepthMask(GL_TRUE);
 	glPopAttrib();
+}
+
+void FsWeather::AddRainToParticleManager(class YsGLParticleManager &partMan, const YsVec3 &cameraPos, const YsVec3 &cameraDir, const class FsSimulation *sim) const
+{
+	if(isRaining != YSTRUE || rainIntensity <= 0.0)
+	{
+		return;
+	}
+
+	// Initialize particle system if needed
+	InitializeRainParticleSystem();
+
+	// Update particle system with more responsive spawning
+	const double dt = 0.0167; // Assume ~60fps for particle updates
+	const int particlesToSpawn = (int)(rainIntensity * 50.0);
+
+	// More frequent optimization but less aggressive culling
+	static double systemTime = 0.0;
+	systemTime += dt;
+	if(systemTime - lastOptimizationTime > 0.25) // Optimize every 0.25 seconds instead of 0.5
+	{
+		OptimizeParticleSystem(cameraPos, systemTime);
+	}
+
+	// Spawn new particles
+	for(int spawn = 0; spawn < particlesToSpawn; spawn++)
+	{
+		for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+		{
+			if(!rainParticles[i].active)
+			{
+				// Spawn particle in area around camera
+				double angle = (rand() % 360) * YsPi / 180.0;
+				double distance = 50.0 + (rand() % 300);
+				double height = 80.0 + (rand() % 120);
+
+				rainParticles[i].position.Set(
+					cameraPos.x() + cos(angle) * distance,
+					cameraPos.y() + height,
+					cameraPos.z() + sin(angle) * distance
+				);
+
+				// Rain velocity affected by wind and gravity
+				rainParticles[i].velocity.Set(
+					wind.x() * 0.3 + (rand() % 20 - 10) * 0.1,
+					-200.0 - (rand() % 25), // Much faster falling speed
+					wind.z() * 0.3 + (rand() % 20 - 10) * 0.1
+				);
+
+				rainParticles[i].life = 0.0f;
+				rainParticles[i].maxLife = 5.0f + (rand() % 30) * 0.1f;
+				rainParticles[i].hitGround = false;
+				rainParticles[i].splashLife = 0.0f;
+				rainParticles[i].size = 0.8f + (rand() % 5) * 0.1f;
+				rainParticles[i].active = true;
+				break;
+			}
+		}
+	}
+
+	// Update and add particles to particle manager
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(!rainParticles[i].active) continue;
+
+		RainParticle &p = rainParticles[i];
+
+		// Update particle physics
+		p.life += dt;
+		p.position += p.velocity * dt;
+
+		// Check ground collision with visual ground mesh (always at Y=0)
+		// The visual ground mesh is rendered at Y=0 regardless of terrain elevation
+		double groundLevel = 0.0;
+
+		if(!p.hitGround && p.position.y() <= groundLevel + 1.0)
+		{
+			p.hitGround = true;
+			p.splashPos = p.position;
+			p.splashPos.SetY(groundLevel + 0.1);
+			p.splashLife = 0.0f;
+		}
+
+		// Remove particle if too old or if it's been on ground too long
+		if(p.life >= p.maxLife || (p.hitGround && p.splashLife > 0.5f))
+		{
+			p.active = false;
+			continue;
+		}
+
+		// Calculate distance from camera for alpha and culling
+		p.distanceFromCamera = (p.position - cameraPos).GetLength();
+		float alpha = (1200.0f - p.distanceFromCamera) / 1200.0f;
+		alpha *= (float)rainIntensity;
+		alpha = YsBound(alpha, 0.0f, 0.95f);
+
+		if(alpha > 0.02f)
+		{
+			if(!p.hitGround)
+			{
+				// Falling raindrop - add as elongated particle to simulate motion blur
+				float colorIntensity = 0.6f + (1.0f - p.distanceFromCamera / 1200.0f) * 0.2f;
+				
+				// Add natural color variation for more realistic rain
+				float colorVariation = 0.9f + (rand() % 20) * 0.01f; // Slight variation in brightness
+				float blueish = 1.0f + (rand() % 10) * 0.02f; // Slightly more blue tint
+				
+				YsColor rainColor;
+				rainColor.SetDoubleRGBA(colorIntensity * 0.7f * colorVariation, 
+									   colorIntensity * 0.8f * colorVariation, 
+									   colorIntensity * blueish, 
+									   alpha * 0.8f);
+				
+				// Create streak effect by adding multiple particles along velocity vector
+				YsVec3 normalizedVel = p.velocity;
+				normalizedVel.Normalize();
+				double streakLength = p.size * 2.8; // Reduced streak length for smaller particles
+				if(p.distanceFromCamera > 600.0) streakLength *= 0.6;
+				
+				// Add 3-4 particles along the streak to create raindrop trail effect
+				for(int streak = 0; streak < 3; streak++)
+				{
+					YsVec3 streakPos = p.position + normalizedVel * (streakLength * streak * 0.3);
+					float streakAlpha = alpha * (1.0f - streak * 0.2f);
+					float streakSize = p.size * (0.84f - streak * 0.14f); // 30% smaller particle size
+					
+					YsColor streakColor;
+					float streakVariation = colorVariation * (1.0f - streak * 0.1f);
+					streakColor.SetDoubleRGBA(colorIntensity * 0.7f * streakVariation, 
+											 colorIntensity * 0.8f * streakVariation, 
+											 colorIntensity * blueish, 
+											 streakAlpha);
+					
+					partMan.Add(streakPos, streakColor, streakSize, 0.0f, 0);
+				}
+			}
+			else if(p.splashLife < 0.15f)
+			{
+				// Ground impact effect - create small splash with multiple particles
+				float splashAlpha = alpha * (0.15f - p.splashLife) / 0.15f;
+				
+				// Splash particles have brighter, more reflective appearance
+				float splashBrightness = 0.8f + (rand() % 15) * 0.01f;
+				YsColor splashColor;
+				splashColor.SetDoubleRGBA(splashBrightness, splashBrightness + 0.05f, 0.95f, splashAlpha);
+				
+				// Create splash effect with multiple small particles
+				for(int splash = 0; splash < 4; splash++)
+				{
+					double angle = (splash * 90.0 + rand() % 45) * YsPi / 180.0;
+					double distance = 0.5 + (rand() % 10) * 0.1;
+					YsVec3 splashParticlePos = p.splashPos + YsVec3(cos(angle) * distance, 0.2 + splash * 0.1, sin(angle) * distance);
+					
+					float particleAlpha = splashAlpha * (1.0f - splash * 0.15f);
+					float particleBrightness = splashBrightness * (1.0f - splash * 0.1f);
+					YsColor particleColor;
+					particleColor.SetDoubleRGBA(particleBrightness, particleBrightness + 0.05f, 0.95f, particleAlpha);
+					
+					partMan.Add(splashParticlePos, particleColor, 0.8f, 0.0f, 0);
+				}
+			}
+		}
+	}
+
+	// Update splash life for all particles
+	for(int i = 0; i < MAX_RAIN_PARTICLES; i++)
+	{
+		if(rainParticles[i].active && rainParticles[i].hitGround)
+		{
+			rainParticles[i].splashLife += dt;
+		}
+	}
+
+	// Camera direction check for top-down view - add extra particles
+	YsVec3 upVector(0.0, 1.0, 0.0);
+	double dotProduct = cameraDir * upVector;
+
+	// If looking down (dot product negative), add more visible rain particles
+	if(dotProduct < -0.3)
+	{
+		float topDownIntensity = (-dotProduct - 0.3f) / 0.7f; // Scale from 0 to 1
+
+		for(int i = 0; i < (int)(topDownIntensity * 120); i++) // More particles for top-down view
+		{
+			double angle = (rand() % 360) * YsPi / 180.0;
+			double radius = (rand() % 450); // Broader distribution for wider coverage
+			double height = cameraPos.y() - 5.0 - (rand() % 40); // Closer to camera level
+
+			YsVec3 pos(
+				cameraPos.x() + cos(angle) * radius,
+				height,
+				cameraPos.z() + sin(angle) * radius
+			);
+
+			float alpha = (400.0f - radius) / 400.0f * (float)rainIntensity * topDownIntensity * 0.7f;
+			
+			// Add subtle color variation for top-down rain
+			float topDownVariation = 0.9f + (rand() % 15) * 0.01f;
+			YsColor topDownColor;
+			topDownColor.SetDoubleRGBA(0.6 * topDownVariation, 0.7 * topDownVariation, 0.85, alpha);
+			
+			// Add small streaks for top-down view
+			float streakSize = 0.56f + (rand() % 4) * 0.07f; // 30% smaller
+			partMan.Add(pos, topDownColor, streakSize, 0.0f, 0);
+			
+			// Add secondary particle slightly offset for density
+			if(alpha > 0.3f)
+			{
+				YsVec3 secondaryPos = pos + YsVec3((rand() % 20 - 10) * 0.1, -0.5, (rand() % 20 - 10) * 0.1);
+				float secondaryVariation = 0.8f + (rand() % 20) * 0.01f;
+				YsColor secondaryColor;
+				secondaryColor.SetDoubleRGBA(0.5 * secondaryVariation, 0.6 * secondaryVariation, 0.75, alpha * 0.6f);
+				partMan.Add(secondaryPos, secondaryColor, streakSize * 0.49f, 0.0f, 0); // 30% smaller
+			}
+		}
+	}
 }
 
 void FsWeather::DrawCloudLayer(const YsVec3 &cameraPos) const

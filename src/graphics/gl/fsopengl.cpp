@@ -727,6 +727,156 @@ void FsDrawCircle(int x,int y,int rad,const YsColor &col,YSBOOL fill)
 #endif
 }
 
+void FsDrawCircleTransparent(int x,int y,int rad,const YsColor &col,YSBOOL fill)
+{
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparent In");
+#endif
+
+	int i;
+	static YsArray <YsVec2> circle;
+
+	// Enable blending for transparency
+	GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+	if(!blendWasEnabled)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	glColor4d(col.Rd(),col.Gd(),col.Bd(),col.Ad());
+
+	if(circle.GetN()<65)
+	{
+		circle.Set(65,NULL);
+		for(i=0; i<=64; i++)
+		{
+			double a;
+			a=YsPi*((double)i)/32.0;
+			circle[i].Set(cos(a),sin(a));
+		}
+	}
+
+	glPushMatrix();
+	glTranslatef((float)x,(float)y,0);
+	glScalef((float)rad,(float)rad,(float)rad);
+
+	if(fill==YSTRUE)
+	{
+		glBegin(GL_POLYGON);
+	}
+	else
+	{
+		glBegin(GL_LINE_LOOP);
+	}
+
+	for(i=0; i<64; i++)
+	{
+		glVertex2dv(circle[i]);
+	}
+
+	glEnd();
+	glPopMatrix();
+
+	// Restore blending state
+	if(!blendWasEnabled)
+	{
+		glDisable(GL_BLEND);
+	}
+
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparent Out");
+#endif
+}
+
+void FsDrawCircleTransparentClipped(int x,int y,int rad,const YsColor &col,YSBOOL fill,int clipX1,int clipY1,int clipX2,int clipY2)
+{
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparentClipped In");
+#endif
+
+	int i;
+	static YsArray <YsVec2> circle;
+
+	// Enable scissor test for clipping
+	GLboolean scissorWasEnabled = glIsEnabled(GL_SCISSOR_TEST);
+	if(!scissorWasEnabled)
+	{
+		glEnable(GL_SCISSOR_TEST);
+	}
+	
+	// Set scissor rectangle (note: OpenGL uses bottom-left origin)
+	GLint viewport[4];
+	glGetIntegerv(GL_VIEWPORT, viewport);
+	int windowHeight = viewport[3];
+	
+	// Convert top-left coordinates to bottom-left
+	int scissorX = clipX1;
+	int scissorY = windowHeight - clipY2;
+	int scissorWidth = clipX2 - clipX1;
+	int scissorHeight = clipY2 - clipY1;
+	
+	glScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+
+	// Enable blending for transparency
+	GLboolean blendWasEnabled = glIsEnabled(GL_BLEND);
+	if(!blendWasEnabled)
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	}
+
+	glColor4d(col.Rd(),col.Gd(),col.Bd(),col.Ad());
+
+	if(circle.GetN()<65)
+	{
+		circle.Set(65,NULL);
+		for(i=0; i<=64; i++)
+		{
+			double a;
+			a=YsPi*((double)i)/32.0;
+			circle[i].Set(cos(a),sin(a));
+		}
+	}
+
+	glPushMatrix();
+	glTranslatef((float)x,(float)y,0);
+	glScalef((float)rad,(float)rad,(float)rad);
+
+	if(fill==YSTRUE)
+	{
+		glBegin(GL_POLYGON);
+	}
+	else
+	{
+		glBegin(GL_LINE_LOOP);
+	}
+
+	for(i=0; i<64; i++)
+	{
+		glVertex2dv(circle[i]);
+	}
+
+	glEnd();
+	glPopMatrix();
+
+	// Restore blending state
+	if(!blendWasEnabled)
+	{
+		glDisable(GL_BLEND);
+	}
+
+	// Restore scissor test state
+	if(!scissorWasEnabled)
+	{
+		glDisable(GL_SCISSOR_TEST);
+	}
+
+#ifdef YSOGLERRORCHECK
+	FsOpenGlShowError("FsDrawCircleTransparentClipped Out");
+#endif
+}
+
 void FsDrawPolygon(int n,int plg[],const YsColor &col)
 {
 	int i;

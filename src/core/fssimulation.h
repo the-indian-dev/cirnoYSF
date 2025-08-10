@@ -365,6 +365,7 @@ protected:
 	class FsWeather *weather,*iniWeather;
 	class FsClouds *cloud;
 	class FsSolidClouds *solidCloud;
+	class FsDynamicCloudManager *dynamicCloudManager;
 
 	class FsMissionGoal *goal;
 

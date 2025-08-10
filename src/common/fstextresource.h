@@ -160,6 +160,7 @@ inline const wchar_t *FsGetTextResource(const char *key,const wchar_t *alternati
 #define FSGUI_NEWFLTDLG_WINDDIR                           FsGetTextResource("newfltdlg/winddir",L"Wind Dir")
 #define FSGUI_NEWFLTDLG_WINDSPD                           FsGetTextResource("newfltdlg/windspd",L"Wind Speed(kt)")
 #define FSGUI_NEWFLTDLG_VISIBILITY                        FsGetTextResource("newfltdlg/visibility",L"Visibility(mile)")
+#define FSGUI_NEWFLTDLG_CLOUDDENSITY                      FsGetTextResource("newfltdlg/clouddensity",L"Cloud Density Multiplier")
 #define FSGUI_NEWFLTDLG_OVERCASTLAYER                     FsGetTextResource("newfltdlg/overcast",L"Overcast Layer")
 #define FSGUI_NEWFLTDLG_OVERCASTFLOOR                     FsGetTextResource("newfltdlg/overcastfloor",L"Floor")
 #define FSGUI_NEWFLTDLG_OVERCASTTHICKNESS                 FsGetTextResource("newfltdlg/overcastthickness",L"Thickness")

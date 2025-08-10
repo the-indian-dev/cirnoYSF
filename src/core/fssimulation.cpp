@@ -151,6 +151,7 @@ FsSimulation::FsSimulation(FsWorld *w) : airplaneList(FsAirplaneAllocator),groun
 	iniWeather=new FsWeather;
 	cloud=new FsClouds;
 	solidCloud=new FsSolidClouds;
+	dynamicCloudManager=new FsDynamicCloudManager;
 	goal=new FsMissionGoal;
 	goal->SetIsActiveMission(YSFALSE);  // By default, FsSimulation doesn't have an active mission.
 	simEvent=new FsSimulationEventStore;
@@ -345,6 +346,7 @@ FsSimulation::~FsSimulation()
 	delete iniWeather;
 	delete solidCloud;
 	delete cloud;
+	delete dynamicCloudManager;
 	delete goal;
 	delete simEvent;
 
@@ -2295,32 +2297,50 @@ void FsSimulation::PrepareRunSimulation(void)
 	if(netServer==NULL && netClient==NULL)
 	// 2005/05/30 Don't add cloud in network mode.  I cannot afford transmitting them.
 	{
-		YsVec3 cloudCenter;
-		if(playerPlane!=NULL)
+		// Try to initialize dynamic cloud manager, fallback to original system if it fails
+		YSBOOL useDynamicClouds = YSFALSE;
+		if(dynamicCloudManager != NULL && cfgPtr->cloudType==FSCLOUDSOLID)
 		{
-			cloudCenter=playerPlane->GetPosition();
+			dynamicCloudManager->Initialize(30000.0, cfgPtr->ceiling);
+			YsVec3 initialPos = (playerPlane != NULL) ? playerPlane->GetPosition() : YsOrigin();
+			dynamicCloudManager->Update(initialPos, 0.0);
+			useDynamicClouds = YSTRUE;
 		}
-		else
+		
+		// Fallback to original cloud system if dynamic clouds are not available
+		if(useDynamicClouds != YSTRUE)
 		{
-			cloudCenter=YsOrigin();
+			YsVec3 cloudCenter;
+			if(playerPlane!=NULL)
+			{
+				cloudCenter=playerPlane->GetPosition();
+			}
+			else
+			{
+				cloudCenter=YsOrigin();
+			}
+			if(cfgPtr->cloudType==FSCLOUDFLAT)
+			{
+				if(cloud->IsReady()!=YSTRUE)
+				{
+					cloud->Scatter(16,cloudCenter,20000.0,1000.0,cfgPtr->ceiling);
+				}
+				if(cloud->IsReady()==YSTRUE && cfgPtr->useOpenGlListForCloud==YSTRUE)
+				{
+					cloud->MakeOpenGlList();
+				}
+			}
+			if(cfgPtr->cloudType==FSCLOUDSOLID)
+			{
+				if(solidCloud->IsReady()!=YSTRUE)
+				{
+					solidCloud->Make(12,cloudCenter,30000.0,6000.0,cfgPtr->ceiling-400.0,cfgPtr->ceiling+400.0);
+				}
+			}
 		}
-		if(cfgPtr->cloudType==FSCLOUDFLAT)
+		else if(dynamicCloudManager != NULL)
 		{
-			if(cloud->IsReady()!=YSTRUE)
-			{
-				cloud->Scatter(16,cloudCenter,20000.0,1000.0,cfgPtr->ceiling);
-			}
-			if(cloud->IsReady()==YSTRUE && cfgPtr->useOpenGlListForCloud==YSTRUE)
-			{
-				cloud->MakeOpenGlList();
-			}
-		}
-		if(cfgPtr->cloudType==FSCLOUDSOLID)
-		{
-			if(solidCloud->IsReady()!=YSTRUE)
-			{
-				solidCloud->Make(12,cloudCenter,30000.0,6000.0,cfgPtr->ceiling-400.0,cfgPtr->ceiling+400.0);
-			}
+			dynamicCloudManager->Reset();
 		}
 	}
 
@@ -2546,6 +2566,17 @@ void FsSimulation::SimulateOneStep(
 		threadPool.Run(taskArray.size(),taskArray.data());
 
 		SimProcessCollisionAndTerrain(passedTime);
+
+		// Update dynamic cloud manager (with safety checks)
+		if(dynamicCloudManager != NULL)
+		{
+			FsAirplane *playerPlane = GetPlayerAirplane();
+			if(playerPlane != NULL)
+			{
+				YsVec3 playerPos = playerPlane->GetPosition();
+				dynamicCloudManager->Update(playerPos, currentTime);
+			}
+		}
 
 		const double stepTime=0.025;
 		while(deltaTime>YsTolerance)
@@ -6409,12 +6440,27 @@ void FsSimulation::SimDrawScreen(
 		particleStore.AddToParticleManager(partMan);
 		if(YSTRUE==cfgPtr->useParticle)
 		{
-			solidCloud->AddToParticleManager(partMan,env,*weather,actualViewMode.viewAttitude.GetForwardVector(),actualViewMode.viewMat,prj.nearz,prj.farz,prj.tanFov);
+			if(dynamicCloudManager != NULL)
+			{
+				dynamicCloudManager->AddToParticleManager(partMan,env,*weather,actualViewMode.viewAttitude.GetForwardVector(),actualViewMode.viewMat,prj.nearz,prj.farz,prj.tanFov);
+			}
+			else
+			{
+				solidCloud->AddToParticleManager(partMan,env,*weather,actualViewMode.viewAttitude.GetForwardVector(),actualViewMode.viewMat,prj.nearz,prj.farz,prj.tanFov);
+			}
 			bulletHolder.AddToParticleManager(partMan,currentTime);
 
 			for(FsAirplane *seeker=nullptr; nullptr!=(seeker=FindNextAirplane(seeker)); )
 			{
 				seeker->AddSmokeToParticleManager(partMan,currentTime,cfgPtr->smkRemainTime);
+			}
+			
+			// Add rain particles to particle manager when using particle rendering
+			if(weather->IsRaining() == YSTRUE)
+			{
+				YsVec3 cameraDir;
+				actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
+				weather->AddRainToParticleManager(partMan, actualViewMode.viewPoint, cameraDir, this);
 			}
 		}
 		partMan.Sort(actualViewMode.viewPoint,actualViewMode.viewAttitude.GetForwardVector(),threadPool);
@@ -7014,11 +7060,18 @@ void FsSimulation::SimDrawScreenZBufferSensitive(
 
 	if(YSTRUE!=cfgPtr->useParticle)
 	{
-		solidCloud->Draw(env,*weather,actualViewMode.viewMat,proj.nearz,proj.farz,proj.tanFov);
+		if(dynamicCloudManager != NULL)
+		{
+			dynamicCloudManager->DrawSolidClouds(env,*weather,actualViewMode.viewMat,proj.nearz,proj.farz,proj.tanFov);
+		}
+		else
+		{
+			solidCloud->Draw(env,*weather,actualViewMode.viewMat,proj.nearz,proj.farz,proj.tanFov);
+		}
 	}
 
-	// Draw rain effects in 3D world space if it's raining
-	if(weather->IsRaining() == YSTRUE)
+	// Draw rain effects in 3D world space if it's raining (only when not using particle rendering)
+	if(weather->IsRaining() == YSTRUE && YSTRUE != cfgPtr->useParticle)
 	{
 		YsVec3 cameraDir;
 		actualViewMode.viewAttitude.Mul(cameraDir, YsVec3(0.0, 0.0, -1.0));
@@ -7543,7 +7596,11 @@ void FsSimulation::SimDrawField(const ActualViewMode &actualViewMode,const class
 
 	if(cfgPtr->drawCloud==YSTRUE && env!=FSNIGHT)
 	{
-		cloud->Draw();
+		// Only draw flat clouds if we're not using dynamic clouds (which are solid only)
+		if(cfgPtr->cloudType==FSCLOUDFLAT)
+		{
+			cloud->Draw();
+		}
 	}
 }
 
@@ -8292,6 +8349,7 @@ void FsSimulation::SimDrawForeground(const ActualViewMode &actualViewMode,const 
 void FsSimulation::SimDrawRadar(const ActualViewMode &actualViewMode) const
 {
 	FsHorizontalRadar radar;
+	FsVerticalRadar verticalRadar;
 
 	if(NULL!=GetPlayerAirplane())
 	{
@@ -8330,6 +8388,43 @@ void FsSimulation::SimDrawRadar(const ActualViewMode &actualViewMode) const
 				break;
 			case FSWEAPON_BOMB500HD:
 				radar.Draw(this,x1,y1,x2,y2,radarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
+				break;
+			}
+		}
+
+		// Draw vertical radar if active
+		double verticalRadarRange = playerPlane->Prop().GetCurrentVerticalRadarRange();
+		if(YsEqual(verticalRadarRange,0.0)!=YSTRUE)
+		{
+			int wid,hei;
+			FsGetWindowSize(wid,hei);
+
+			long radarSize=wid/5;
+
+			// Position vertical radar on the left side
+			long x1=10;
+			long y1=10;
+			long x2=10+radarSize;
+			long y2=10+radarSize;
+
+			switch(playerPlane->Prop().GetWeaponOfChoice())
+			{
+			default:
+			case FSWEAPON_GUN:
+			case FSWEAPON_AIM9:
+			case FSWEAPON_AIM9X:
+			case FSWEAPON_AIM120:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),0,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_AGM65:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_BOMB:
+			case FSWEAPON_BOMB250:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),2,cfgPtr->radarAltitudeLimit);
+				break;
+			case FSWEAPON_BOMB500HD:
+				verticalRadar.Draw(this,x1,y1,x2,y2,verticalRadarRange,*GetPlayerAirplane(),1,cfgPtr->radarAltitudeLimit);
 				break;
 			}
 		}
@@ -10241,7 +10336,14 @@ void FsSimulation::SimDecideViewpointAndCheckIsInCloud(ActualViewMode &actualVie
 	actualViewMode.isViewPointInCloud=weather->IsInCloudLayer(actualViewMode.viewPoint);
 	if(actualViewMode.isViewPointInCloud!=YSTRUE)
 	{
-		actualViewMode.isViewPointInCloud=solidCloud->IsInCloud(actualViewMode.viewPoint);
+		if(dynamicCloudManager != NULL)
+		{
+			actualViewMode.isViewPointInCloud=dynamicCloudManager->IsInCloud(actualViewMode.viewPoint);
+		}
+		else
+		{
+			actualViewMode.isViewPointInCloud=solidCloud->IsInCloud(actualViewMode.viewPoint);
+		}
 	}
 
 	if(actualViewMode.isViewPointInCloud!=YSTRUE)
