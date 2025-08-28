@@ -72,22 +72,22 @@ jobs:
             -DCMAKE_CXX_FLAGS="-Wno-incompatible-pointer-types" \
             -DCMAKE_POLICY_VERSION_MINIMUM=3.5
             
-      - name: Configure CMake with Optimizations (Windows)
+      - name: Configure CMake for Maximum Compatibility (Windows)
         if: runner.os == 'Windows'
         working-directory: ${{ github.workspace }}
-        shell: cmd # Using cmd for Windows
+        shell: cmd
         run: |
-          echo "Configuring CMake for Windows (MSVC) by adding optimizations to the default flags"
+          echo "Configuring CMake for Windows (MSVC) with flags for broad CPU compatibility."
           
-          :: /DWIN32 /D_WINDOWS: The default defines that prevent Linux-specific headers from being included.
+          :: /DWIN32 /D_WINDOWS: Default defines for Windows.
           :: /EHsc: Standard C++ exception handling model.
-          :: --- Your Custom Optimization Flags ---
-          :: /Ox: Full optimization, favoring speed.
-          :: /fp:fast: Enables fast, less precise floating-point operations.
-          :: /arch:AVX2: Use Advanced Vector Extensions 2 for modern CPUs.
+          :: /Ox: Full optimization, favoring speed. This is a safe and effective general optimization.
+          :: /fp:fast: Enables fast, less precise floating-point operations. Good for graphics/games.
           :: /GL: Enable Whole Program Optimization (requires /LTCG at link time).
-          set EXTRA_COMPILE_FLAGS=/DWIN32 /D_WINDOWS /EHsc /Ox /fp:fast /arch:AVX2 /GL
-
+          :: REMOVED: /arch:AVX2 - This flag was limiting CPU support to modern processors (Haswell ~2013 and newer).
+          :: By removing it, MSVC defaults to a baseline (usually SSE2) compatible with much older CPUs.
+          set EXTRA_COMPILE_FLAGS=/DWIN32 /D_WINDOWS /EHsc /Ox /fp:fast /GL
+          
           :: /LTCG: Link-Time Code Generation to work with the compiler's /GL flag.
           :: opengl32.lib glu32.lib: Manually link required libraries.
           set EXTRA_LINK_FLAGS=/LTCG opengl32.lib glu32.lib
